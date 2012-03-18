@@ -8,6 +8,8 @@ Doxyfile
 *.orig
 *.moc
 *_automoc.cpp
+*.diff
+BuildScript.sh
 
 # CMake
 CMakeCache.txt
