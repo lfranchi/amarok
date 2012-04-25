@@ -22,6 +22,12 @@
 #include <QStringList>
 #include <QString>
 
+#ifndef UTILITIES_BUILD
+    #include "amarok_export.h"
+#else
+    #define AMAROK_EXPORT
+#endif
+
 namespace Amarok
 {
 
@@ -32,17 +38,19 @@ enum FileType
     Mp3         =  1,
     Ogg         =  2,
     Flac        =  3,
-    Mp4         =  4,
+    Mp4         =  4, // a file in MPEG-4 container that may or may not contain video
     Wma         =  5,
     Aiff        =  6,
     Mpc         =  7,
     TrueAudio   =  8,
     Wav         =  9,
-    WavPack     = 10
+    WavPack     = 10,
+    M4a         = 11, // a file in MPEG-4 container that contains only audio
+    M4v         = 12  // a file in MPEG-4 container that for sure contains video
 };
 
 
-class FileTypeSupport
+class AMAROK_EXPORT FileTypeSupport
 {
 public:
     static QString toString( Amarok::FileType ft );

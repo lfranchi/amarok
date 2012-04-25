@@ -17,6 +17,7 @@
 #ifndef AMAROK_FILECOLLECTIONLOCATION_H
 #define AMAROK_FILECOLLECTIONLOCATION_H
 
+#include "amarok_export.h"
 #include "core/collections/CollectionLocation.h"
 
 #include <QSet>
@@ -27,7 +28,7 @@ class KJob;
 
 namespace Collections {
 
-class FileCollectionLocation : public CollectionLocation
+class AMAROK_EXPORT FileCollectionLocation : public CollectionLocation
 {
     Q_OBJECT
     public:
@@ -37,7 +38,6 @@ class FileCollectionLocation : public CollectionLocation
         virtual QString prettyLocation() const;
         virtual bool isWritable() const;
         virtual bool isOrganizable() const;
-        virtual bool remove( const Meta::TrackPtr &track );
         virtual void removeUrlsFromCollection( const Meta::TrackList& sources );
         virtual void showRemoveDialog( const Meta::TrackList &tracks );
     public slots:

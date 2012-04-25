@@ -21,6 +21,7 @@
 #include "core/capabilities/EditCapability.h"
 #include "core/meta/Meta.h"
 #include "PlaylistManager.h"
+#include "core-impl/meta/proxy/MetaProxy.h"
 #include "core-impl/playlists/types/file/PlaylistFileSupport.h"
 
 #include <KMimeType>
@@ -72,7 +73,7 @@ PLSPlaylist::trackCount() const
     if( m_tracksLoaded )
         return m_tracks.count();
 
-    //TODO: count the number of lines starting with #
+    //TODO: read NumberOfEntries from footer
     return -1;
 }
 
@@ -146,11 +147,9 @@ PLSPlaylist::removeTrack( int position )
 }
 
 bool
-PLSPlaylist::loadPls( QTextStream &stream )
+PLSPlaylist::loadPls( QTextStream &textStream )
 {
-    DEBUG_BLOCK
-
-    Meta::TrackPtr currentTrack;
+    MetaProxy::Track *proxyTrack;
 
     // Counted number of "File#=" lines.
     unsigned int entryCnt = 0;
@@ -172,27 +171,32 @@ PLSPlaylist::loadPls( QTextStream &stream )
     * Read the lines into a buffer; Cleanup the line strings;
     * Count the entries manually and read "NumberOfEntries".
     */
-    while (!stream.atEnd()) {
-        tmp = stream.readLine();
+    while( !textStream.atEnd() )
+    {
+        tmp = textStream.readLine();
         tmp = tmp.trimmed();
-        if (tmp.isEmpty())
+        if( tmp.isEmpty() )
             continue;
-        lines.append(tmp);
+        lines.append( tmp );
 
-        if (tmp.contains(regExp_File)) {
+        if( tmp.contains( regExp_File ) )
+        {
             entryCnt++;
             continue;
         }
-        if (tmp == section_playlist) {
+        if( tmp == section_playlist )
+        {
             havePlaylistSection = true;
             continue;
         }
-        if (tmp.contains(regExp_NumberOfEntries)) {
-            numberOfEntries = tmp.section('=', -1).trimmed().toUInt();
+        if( tmp.contains( regExp_NumberOfEntries ) )
+        {
+            numberOfEntries = tmp.section( '=', -1 ).trimmed().toUInt();
             continue;
         }
     }
-    if (numberOfEntries != entryCnt) {
+    if( numberOfEntries != entryCnt )
+    {
         warning() << ".pls playlist: Invalid \"NumberOfEntries\" value.  "
                 << "NumberOfEntries=" << numberOfEntries << "  counted="
                 << entryCnt << endl;
@@ -202,7 +206,7 @@ PLSPlaylist::loadPls( QTextStream &stream )
         */
         numberOfEntries = entryCnt;
     }
-    if (!numberOfEntries)
+    if( numberOfEntries == 0 )
         return true;
 
     unsigned int index;
@@ -213,67 +217,71 @@ PLSPlaylist::loadPls( QTextStream &stream )
     * and parse the playlist data.
     */
     QStringList::const_iterator i = lines.constBegin(), end = lines.constEnd();
-    for ( ; i != end; ++i) {
-        if (!inPlaylistSection && havePlaylistSection) {
+    for( ; i != end; ++i )
+    {
+        if( !inPlaylistSection && havePlaylistSection )
+        {
             /* The playlist begins with the "[playlist]" tag.
             * Skip everything before this.
             */
-            if ((*i) == section_playlist)
+            if( (*i) == section_playlist )
                 inPlaylistSection = true;
             continue;
         }
-        if ((*i).contains(regExp_File)) {
+        if( (*i).contains( regExp_File ) )
+        {
             // Have a "File#=XYZ" line.
-            index = loadPls_extractIndex(*i);
-            if (index > numberOfEntries || index == 0)
+            index = loadPls_extractIndex( *i );
+            if( index > numberOfEntries || index == 0 )
                 continue;
-            tmp = (*i).section('=', 1).trimmed();
-            currentTrack = CollectionManager::instance()->trackForUrl( tmp );
-            if( currentTrack.isNull() )
+            tmp = (*i).section( '=', 1 ).trimmed();
+            KUrl url( tmp );
+            if( url.isRelative() )
             {
-                debug() << "track could not be loaded: " << tmp;
-                continue;
+                const QString dir = m_url.directory();
+                url = KUrl( dir );
+                url.addPath( tmp );
+                url.cleanPath();
             }
-            m_tracks.append( currentTrack );
+            proxyTrack = new MetaProxy::Track( url );
+            m_tracks << Meta::TrackPtr( proxyTrack );
             continue;
         }
-        if ((*i).contains(regExp_Title)) {
+        if( (*i).contains(regExp_Title) )
+        {
             // Have a "Title#=XYZ" line.
             index = loadPls_extractIndex(*i);
-            if (index > numberOfEntries || index == 0)
+            if( index > numberOfEntries || index == 0 )
                 continue;
-            tmp = (*i).section('=', 1).trimmed();
-
-            if ( currentTrack.data() != 0 && currentTrack->is<Capabilities::EditCapability>() )
-            {
-                Capabilities::EditCapability *ec = currentTrack->create<Capabilities::EditCapability>();
-                if( ec )
-                    ec->setTitle( tmp );
-                delete ec;
-            }
+            tmp = (*i).section( '=', 1 ).trimmed();
+            proxyTrack->setName( tmp );
             continue;
         }
-        if ((*i).contains(regExp_Length)) {
+        if( (*i).contains( regExp_Length ) )
+        {
             // Have a "Length#=XYZ" line.
             index = loadPls_extractIndex(*i);
-            if (index > numberOfEntries || index == 0)
+            if( index > numberOfEntries || index == 0 )
                 continue;
-            tmp = (*i).section('=', 1).trimmed();
-            //tracks.append( KUrl(tmp) );
-//             Q_ASSERT(ok);
+            tmp = (*i).section( '=', 1 ).trimmed();
+            bool ok = false;
+            int seconds = tmp.toInt( &ok );
+            if( ok )
+                proxyTrack->setLength( seconds * 1000 ); //length is in milliseconds
             continue;
         }
-        if ((*i).contains(regExp_NumberOfEntries)) {
+        if( (*i).contains( regExp_NumberOfEntries ) )
+        {
             // Have the "NumberOfEntries=#" line.
             continue;
         }
-        if ((*i).contains(regExp_Version)) {
+        if( (*i).contains( regExp_Version ) )
+        {
             // Have the "Version=#" line.
-            tmp = (*i).section('=', 1).trimmed();
+            tmp = (*i).section( '=', 1 ).trimmed();
             // We only support Version=2
-            if (tmp.toUInt(&ok) != 2)
+            if (tmp.toUInt( &ok ) != 2)
                 warning() << ".pls playlist: Unsupported version." << endl;
-//             Q_ASSERT(ok);
             continue;
         }
         warning() << ".pls playlist: Unrecognized line: \"" << *i << "\"" << endl;
@@ -300,14 +308,33 @@ PLSPlaylist::save( const KUrl &location, bool relative )
         return false;
     }
 
+    //Format: http://en.wikipedia.org/wiki/PLS_(file_format)
     QTextStream stream( &file );
+    //header
     stream << "[Playlist]\n";
-    stream << "NumberOfEntries=" << m_tracks.count() << endl;
+
+    //body
     int i = 1; //PLS starts at File1=
     foreach( Meta::TrackPtr track, m_tracks )
     {
-        stream << "File" << i << "=";
-        stream << KUrl( track->playableUrl() ).path();
+        KUrl playableUrl( track->playableUrl() );
+        QString file = playableUrl.url();
+
+        if( playableUrl.isLocalFile() )
+        {
+            if( relative )
+            {
+                file = KUrl::relativePath( savePath.directory(),
+                                           playableUrl.toLocalFile() );
+                if( file.startsWith( "./" ) )
+                    file.remove( 0, 2 );
+            }
+            else
+            {
+                file = playableUrl.toLocalFile();
+            }
+        }
+        stream << "File" << i << "=" << file;
         stream << "\nTitle" << i << "=";
         stream << track->name();
         stream << "\nLength" << i << "=";
@@ -316,6 +343,8 @@ PLSPlaylist::save( const KUrl &location, bool relative )
         i++;
     }
 
+    //footer
+    stream << "NumberOfEntries=" << m_tracks.count() << endl;
     stream << "Version=2\n";
     file.close();
     return true;
@@ -330,9 +359,9 @@ PLSPlaylist::loadPls_extractIndex( const QString &str ) const
     */
     bool ok = false;
     unsigned int ret;
-    QString tmp(str.section('=', 0, 0));
-    tmp.remove(QRegExp("^\\D*"));
-    ret = tmp.trimmed().toUInt(&ok);
+    QString tmp( str.section( '=', 0, 0 ) );
+    tmp.remove( QRegExp( "^\\D*" ) );
+    ret = tmp.trimmed().toUInt( &ok );
     Q_ASSERT(ok);
     return ret;
 }

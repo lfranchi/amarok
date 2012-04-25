@@ -1,5 +1,5 @@
 /****************************************************************************************
- * Copyright (c) 2009 Seb Ruiz <ruiz@kde.org>                                           *
+ * Copyright (c) 2012 Matěj Laitl <matej@laitl.cz>                                      *
  *                                                                                      *
  * This program is free software; you can redistribute it and/or modify it under        *
  * the terms of the GNU General Public License as published by the Free Software        *
@@ -14,47 +14,45 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
  ****************************************************************************************/
 
-#include "IpodArtworkCapability.h"
-#include "IpodHandler.h"
+#include "IpodTranscodeCapability.h"
 
-using namespace Handler;
 
-IpodArtworkCapability::IpodArtworkCapability( Meta::IpodHandler *handler )
-    : ArtworkCapability( handler )
-    , m_handler( handler )
+using namespace Capabilities;
+
+IpodTranscodeCapability::IpodTranscodeCapability( IpodCollection *coll, const QString &deviceDirPath  )
+    : TranscodeCapability()
+    , m_coll( coll )
+    , m_configFilePath( deviceDirPath + QString( "/AmarokTranscodingPrefs" ) )
 {
 }
 
-IpodArtworkCapability::~IpodArtworkCapability()
+IpodTranscodeCapability::~IpodTranscodeCapability()
 {
-    // nothing to do here
+    // nothing to do
 }
 
-QImage IpodArtworkCapability::getCover( const Meta::MediaDeviceTrackPtr &track )
+QStringList
+IpodTranscodeCapability::playableFileTypes()
 {
-    return m_handler->libGetCoverArt( track );
+    if( m_coll )
+        return m_coll.data()->supportedFormats();
+    return QStringList();
 }
 
-void IpodArtworkCapability::setCover( Meta::MediaDeviceAlbumPtr album, const QImage &image )
+Transcoding::Configuration
+IpodTranscodeCapability::savedConfiguration()
 {
-    foreach( Meta::TrackPtr t, album->tracks() )
-    {
-        Meta::MediaDeviceTrackPtr track = Meta::MediaDeviceTrackPtr::dynamicCast( t );
-        m_handler->libSetCoverArt( track, image );
-    }
+    KConfig config( m_configFilePath, KConfig::SimpleConfig );
+    return Transcoding::Configuration::fromConfigGroup( config.group( 0 ) );
 }
 
-void IpodArtworkCapability::setCoverPath( Meta::MediaDeviceAlbumPtr album, const QString &path )
+void
+IpodTranscodeCapability::setSavedConfiguration( const Transcoding::Configuration &configuration )
 {
-    foreach( Meta::TrackPtr t, album->tracks() )
-    {
-        Meta::MediaDeviceTrackPtr track = Meta::MediaDeviceTrackPtr::dynamicCast( t );
-        m_handler->libSetCoverArtPath( track, path );
-    }
+    KConfig config( m_configFilePath, KConfig::SimpleConfig );
+    KConfigGroup group = config.group( 0 );
+    configuration.saveToConfigGroup( group );
+    config.sync();
 }
 
-bool IpodArtworkCapability::canUpdateCover() const
-{
-    return m_handler->isWritable() && m_handler->supportsArtwork();
-}
-
+#include "IpodTranscodeCapability.moc"

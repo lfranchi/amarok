@@ -35,17 +35,17 @@ class AMAROK_CORE_EXPORT TrackForUrlWorker : public ThreadWeaver::Job
 {
     Q_OBJECT
 public:
-    TrackForUrlWorker ( const KUrl &url );
-    TrackForUrlWorker ( const QString &url );
+    TrackForUrlWorker( const KUrl &url );
+    TrackForUrlWorker( const QString &url );
     ~TrackForUrlWorker();
 
-    virtual void run () = 0;
+    virtual void run() = 0;
 signals:
-    void finishedLookup ( const Meta::TrackPtr  &track );
+    void finishedLookup( const Meta::TrackPtr &track );
 
 protected:
-    KUrl mUrl;
-    Meta::TrackPtr mTrack;
+    KUrl m_url;
+    Meta::TrackPtr m_track;
 
 private slots:
     void completeJob();

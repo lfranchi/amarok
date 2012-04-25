@@ -43,7 +43,7 @@ class MetaProxy::Track::Private : public QObject, public Meta::Observer
 
         Meta::TrackPtr realTrack;
 
-        QList<Meta::Observer*> observers;
+        QList<Meta::Observer *> observers;
 
         QString cachedArtist;
         QString cachedAlbum;
@@ -82,34 +82,6 @@ class MetaProxy::Track::Private : public QObject, public Meta::Observer
         }
 
     public slots:
-        void slotNewTrackProvider( Collections::TrackProvider *newTrackProvider )
-        {
-            if ( !newTrackProvider )
-            {
-                return;
-            }
-
-            if( newTrackProvider->possiblyContainsTrack( url ) )
-            {
-                Meta::TrackPtr track = newTrackProvider->trackForUrl( url );
-                slotUpdateTrack( track );
-            }
-        }
-
-        void slotNewCollection( Collections::Collection *newCollection )
-        {
-            if ( !newCollection )
-            {
-                return;
-            }
-
-            if( newCollection->possiblyContainsTrack( url ) )
-            {
-                Meta::TrackPtr track = newCollection->trackForUrl( url );
-                slotUpdateTrack( track );
-            }
-        }
-
         void slotUpdateTrack( Meta::TrackPtr track )
         {
             if( track )
@@ -117,8 +89,6 @@ class MetaProxy::Track::Private : public QObject, public Meta::Observer
                 subscribeTo( track );
                 realTrack = track;
                 notifyObservers();
-                disconnect( CollectionManager::instance(), SIGNAL( trackProviderAdded( Collections::TrackProvider* ) ), this, SLOT( slotNewTrackProvider( Collections::TrackProvider* ) ) );
-                disconnect( CollectionManager::instance(), SIGNAL( collectionAdded( Collections::Collection* ) ), this, SLOT( slotNewCollection( Collections::Collection* ) ) );
             }
         }
 };

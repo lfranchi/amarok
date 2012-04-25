@@ -49,10 +49,10 @@ static QDBusObjectPath mprisTrackId(quint64 playlistTrackId)
 {
     QString path;
     if( playlistTrackId > 0 ) {
-        path = QString( "%1/Track/%2" ).arg( MPRIS2_OBJECT_PATH ).arg( playlistTrackId );
+        path = QString( "/org/kde/amarok/Track/%1" ).arg( playlistTrackId );
     } else {
         // dropped out of the playlist
-        path = QString( "%1/OrphanTrack" ).arg( MPRIS2_OBJECT_PATH );
+        path = QLatin1String( "/org/kde/amarok/OrphanTrack" );
     }
     return QDBusObjectPath( path );
 }
@@ -481,7 +481,7 @@ namespace Amarok
                 metaData["mpris:trackid"] = QVariant::fromValue<QDBusObjectPath>(activeMprisTrackId());
             else {
                 // we should be updated shortly
-                QString path = QString( "/PendingTrack" ).arg( MPRIS2_OBJECT_PATH );
+                QString path = QString( "%1/PendingTrack" ).arg( MPRIS2_OBJECT_PATH );
                 metaData["mpris:trackid"] = QVariant::fromValue<QDBusObjectPath>( QDBusObjectPath( path ) );
             }
 

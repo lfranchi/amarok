@@ -1,5 +1,5 @@
 /****************************************************************************************
- * Copyright (c) 2009 Seb Ruiz <ruiz@kde.org>                                           *
+ * Copyright (c) 2012 Bart Cerneels <bart.cerneels@kde.org>                             *
  *                                                                                      *
  * This program is free software; you can redistribute it and/or modify it under        *
  * the terms of the GNU General Public License as published by the Free Software        *
@@ -14,39 +14,29 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
  ****************************************************************************************/
 
-#ifndef IPODARTWORKCAPABILITY_H
-#define IPODARTWORKCAPABILITY_H
+#ifndef METAPROXY_METAPROXYWORKER_H
+#define METAPROXY_METAPROXYWORKER_H
 
-#include "ArtworkCapability.h"
-#include "../../MediaDeviceMeta.h"
+#include <core/collections/support/TrackForUrlWorker.h>
+#include <core/collections/Collection.h>
 
-namespace Meta {
-    class IpodHandler;
-}
+namespace MetaProxy {
 
-namespace Handler
+class Worker : public Amarok::TrackForUrlWorker
 {
-    class IpodArtworkCapability : public ArtworkCapability
-    {
-        Q_OBJECT
+    Q_OBJECT
+    public:
+        explicit Worker( const KUrl &url );
 
-        public:
-            IpodArtworkCapability( Meta::IpodHandler *handler );
-            virtual ~IpodArtworkCapability();
+        //TrackForUrlWorker virtual methods
+        virtual void run();
 
-            virtual QImage getCover( const Meta::MediaDeviceTrackPtr &track );
+    private slots:
+        void slotNewTrackProvider( Collections::TrackProvider *newTrackProvider );
+        void slotNewCollection( Collections::Collection *newCollection );
 
-            virtual void setCover( Meta::MediaDeviceAlbumPtr album, const QImage &image );
+};
 
-            virtual void setCoverPath( Meta::MediaDeviceAlbumPtr album, const QString &path );
+} // namespace MetaProxy
 
-            virtual bool canUpdateCover() const;
-
-            static Type capabilityInterfaceType() { return Handler::Capability::Artwork; }
-
-        private:
-            Meta::IpodHandler *m_handler;
-    };
-}
-
-#endif
+#endif // METAPROXY_METAPROXYWORKER_H

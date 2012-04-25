@@ -37,18 +37,15 @@ QtGroupingProxy::QtGroupingProxy( QAbstractItemModel *model, QModelIndex rootNod
     setSourceModel( model );
 
     // signal proxies
-    connect( sourceModel(),
-        SIGNAL( dataChanged( const QModelIndex&, const QModelIndex& ) ),
-        this, SLOT( modelDataChanged( const QModelIndex&, const QModelIndex& ) )
-    );
-    connect( sourceModel(), SIGNAL( rowsInserted( const QModelIndex&, int, int ) ),
-             SLOT( modelRowsInserted( const QModelIndex &, int, int ) ) );
-    connect( sourceModel(), SIGNAL(rowsAboutToBeInserted( const QModelIndex &, int ,int )),
-             SLOT(modelRowsAboutToBeInserted( const QModelIndex &, int ,int )));
-    connect( sourceModel(), SIGNAL( rowsRemoved( const QModelIndex&, int, int ) ),
-             SLOT( modelRowsRemoved( const QModelIndex&, int, int ) ) );
-    connect( sourceModel(), SIGNAL(rowsAboutToBeRemoved( const QModelIndex &, int ,int )),
+    connect( sourceModel(), SIGNAL(rowsInserted(QModelIndex,int,int) ),
+             SLOT(modelRowsInserted(QModelIndex,int,int)) );
+    connect( sourceModel(), SIGNAL(rowsAboutToBeInserted(QModelIndex,int,int)),
+             SLOT(modelRowsAboutToBeInserted(QModelIndex,int,int)) );
+    connect( sourceModel(), SIGNAL(rowsRemoved(QModelIndex,int,int)),
+             SLOT(modelRowsRemoved(QModelIndex,int,int)) );
+    connect( sourceModel(), SIGNAL(rowsAboutToBeRemoved(QModelIndex,int,int)),
              SLOT(modelRowsAboutToBeRemoved(QModelIndex,int,int)) );
+
     connect( sourceModel(), SIGNAL(layoutChanged()), SLOT(buildTree()) );
     connect( sourceModel(), SIGNAL(dataChanged(QModelIndex,QModelIndex)),
              SLOT(modelDataChanged(QModelIndex,QModelIndex)) );
@@ -698,9 +695,7 @@ QtGroupingProxy::modelRowsAboutToBeInserted( const QModelIndex &parent, int star
     if( parent != m_rootNode )
     {
         //an item will be added to an original index, remap and pass it on
-//        qDebug() << parent;
         QModelIndex proxyParent = mapFromSource( parent );
-//        qDebug() << proxyParent;
         beginInsertRows( proxyParent, start, end );
     }
 }
@@ -718,10 +713,6 @@ QtGroupingProxy::modelRowsInserted( const QModelIndex &parent, int start, int en
     }
     else
     {
-        //an item was added to an original index, remap and pass it on
-//        QModelIndex proxyParent = mapFromSource( parent );
-//        qDebug() << proxyParent;
-        //beginInsertRows had to be called in modelRowsAboutToBeInserted()
         endInsertRows();
     }
 }

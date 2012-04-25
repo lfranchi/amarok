@@ -48,6 +48,7 @@ PlaylistBrowserModel::PlaylistBrowserModel( int playlistCategory )
     //common, unconditional actions
     m_appendAction = new QAction( KIcon( "media-track-add-amarok" ), i18n( "&Add to Playlist" ),
                                   this );
+    m_appendAction->setObjectName( "appendAction" );
     m_appendAction->setProperty( "popupdropper_svg_id", "append" );
     connect( m_appendAction, SIGNAL( triggered() ), this, SLOT( slotAppend() ) );
 
@@ -55,6 +56,7 @@ PlaylistBrowserModel::PlaylistBrowserModel( int playlistCategory )
                                 i18nc( "Replace the currently loaded tracks with these",
                                        "&Replace Playlist" ),
                                 this );
+    m_loadAction->setObjectName( "loadAction" );
     m_loadAction->setProperty( "popupdropper_svg_id", "load" );
     connect( m_loadAction, SIGNAL( triggered() ), this, SLOT( slotLoad() ) );
 
@@ -67,8 +69,8 @@ PlaylistBrowserModel::PlaylistBrowserModel( int playlistCategory )
     connect( The::playlistManager(), SIGNAL(playlistUpdated( Playlists::PlaylistPtr, int )),
              SLOT(slotPlaylistUpdated( Playlists::PlaylistPtr, int )) );
 
-    connect( The::playlistManager(), SIGNAL(renamePlaylist( Playlists::PlaylistPtr )),
-             SLOT(slotRenamePlaylist( Playlists::PlaylistPtr )) );
+    connect( The::playlistManager(), SIGNAL(renamePlaylist(Playlists::PlaylistPtr)),
+             SLOT(slotRenamePlaylist(Playlists::PlaylistPtr)) );
 
     m_playlists = loadPlaylists();
 }
@@ -545,22 +547,16 @@ PlaylistBrowserModel::slotRenamePlaylist( Playlists::PlaylistPtr playlist )
     if( !playlist->provider() || playlist->provider()->category() != m_playlistCategory )
         return;
 
-    //search index of this Playlist
-    // HACK: matches first to match same name, but there could be
-    // several playlists with the same name
-    int row = -1;
-    foreach( const Playlists::PlaylistPtr p, m_playlists )
+    int row = 0;
+    foreach( Playlists::PlaylistPtr p, m_playlists )
     {
-        row++;
-        if( p->name() == playlist->name() )
+        if( p == playlist )
+        {
+            emit renameIndex( index( row, 0 ) );
             break;
+        }
+        row++;
     }
-    if( row == -1 )
-        return;
-
-    QModelIndex idx = index( row, 0, QModelIndex() );
-    debug() << idx;
-    emit( renameIndex( idx ) );
 }
 
 void

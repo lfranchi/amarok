@@ -73,13 +73,10 @@ PlaylistBrowserNS::PlaylistBrowserView::~PlaylistBrowserView()
 void
 PlaylistBrowserNS::PlaylistBrowserView::setModel( QAbstractItemModel *model )
 {
-    if( this->model() )
-        this->model()->disconnect();
-
+    disconnect( this->model(), 0, this, 0 );
     Amarok::PrettyTreeView::setModel( model );
 
-    connect( this->model(), SIGNAL(renameIndex( const QModelIndex & )),
-                 SLOT(edit( const QModelIndex &)) );
+    connect( this->model(), SIGNAL(renameIndex(QModelIndex)), SLOT(edit(QModelIndex)) );
 }
 
 void
@@ -292,7 +289,7 @@ void PlaylistBrowserNS::PlaylistBrowserView::contextMenuEvent( QContextMenuEvent
 
     menu.exec( mapToGlobal( event->pos() ) );
 
-    //We keep the items that the actions need to be applied to in the actions private data.
+    //We keep the items that the action need to be applied to in the action's private data.
     //Clear the data from all actions now that the context menu has executed.
     foreach( QAction *action, actions )
         action->setData( QVariant() );
@@ -361,13 +358,19 @@ PlaylistBrowserNS::PlaylistBrowserView::slotActivated( const QModelIndex &idx )
     QActionList idxActions = model()->data( idx,
             PlaylistBrowserNS::PlaylistBrowserModel::ActionRole ).value<QActionList>();
 
-    //The first action is usually "Add to Playlist"
-    if( !idxActions.isEmpty() )
+    // empty actionlist is valid; If there is an "Add to Playlist" action, it is by
+    // convention first (see PlaylistBrowserModel). Special items (root nodes) might not
+    // have appendAction, do nothing for them.
+    if( !idxActions.isEmpty() && idxActions.first()->objectName() == "appendAction" )
     {
-        idxActions.first()->trigger();
-        //always needs to be done after activation.
-        idxActions.first()->setData( QVariant() );
+        QAction *appendAction = idxActions.first();
+        appendAction->trigger();
     }
+
+    //We keep the items that the action need to be applied to in the action's private data.
+    //Clear the data from all actions now that the context menu has executed.
+    foreach( QAction *action, idxActions )
+        action->setData( QVariant() );
 }
 
 #include "PlaylistBrowserView.moc"
