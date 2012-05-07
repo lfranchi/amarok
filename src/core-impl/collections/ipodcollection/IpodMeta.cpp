@@ -18,14 +18,16 @@
 
 #include "IpodCollection.h"
 #include "IpodMetaEditCapability.h"
+#include "jobs/WriteTagsJob.h"
 #include "config-ipodcollection.h"
 #include "amarokconfig.h"
 #include "core/support/Debug.h"
 #include "core-impl/collections/support/ArtistHelper.h"
+#include "covermanager/CoverCache.h"
 #include "FileType.h"
-#include "MetaTagLib.h"
 
 #include <KTemporaryFile>
+#include <ThreadWeaver/Weaver>
 
 #include <cmath>
 #include <gpod/itdb.h>
@@ -64,11 +66,12 @@ Track::Track( const Meta::TrackPtr &origTrack )
     m_track->userdata_duplicate = AmarokItdbUserDataDuplicateFunc;
 
     Meta::AlbumPtr origAlbum = origTrack->album();
+    Meta::ArtistPtr origArtist = origTrack->artist();
 
     setTitle( origTrack->name() );
     // url is set in setCollection()
     setAlbum( origAlbum ? origAlbum->name() : QString() );
-    setArtist( origTrack->artist() ? origTrack->artist()->name() : QString() );
+    setArtist( origArtist ? origArtist->name() : QString() );
     setComposer( origTrack->composer() ? origTrack->composer()->name() : QString() );
     setGenre( origTrack->genre() ? origTrack->genre()->name() : QString() );
     setYear( origTrack->year() ? origTrack->year()->year() : 0 );
@@ -82,22 +85,24 @@ Track::Track( const Meta::TrackPtr &origTrack )
             albumArtist = origAlbum->albumArtist()->name();
 
         if( origAlbum->hasImage() )
-            setImage( origAlbum->image() );
+            setImage( origAlbum->image(), /* doCommit */ false );
     }
-    if( isCompilation && albumArtist.isEmpty() )
-        // iPod doesn't handle empy album artist well for compilation albums (splits these albums)
+    /* iPod doesn't handle empty album artist well for compilation albums (splits these
+     * albums). Ensure that we have something in albumArtist. We filter it for Amarok for
+     * compilation albums in IpodMeta::Album::albumArtist() */
+    if( albumArtist.isEmpty() && origArtist )
+        albumArtist = origArtist->name();
+    if( albumArtist.isEmpty() )
         albumArtist = i18n( "Various Artists" );
-    else
-        albumArtist = ArtistHelper::bestGuessAlbumArtist( albumArtist, artist()->name(),
-                                                          genre()->name(), composer()->name() );
+
     setAlbumArtist( albumArtist );
-    setIsCompilation( isCompilation );
+    setIsCompilation( isCompilation, /* doCommit */ false );
 
     setBpm( origTrack->bpm() );
     setComment( origTrack->comment() );
 
     setScore( origTrack->score() );
-    setRating( origTrack->rating() );
+    setRating( origTrack->rating(), /* doCommit */ false );
 
     setLength( origTrack->length() );
     // filesize is set in finalizeCopying(), which could be more accurate
@@ -244,43 +249,58 @@ Track::setAlbumArtist( const QString &newAlbumArtist )
 }
 
 void
-Track::setIsCompilation( bool newIsCompilation )
+Track::setIsCompilation( bool newIsCompilation, bool doCommit )
 {
-    // no need for lock here, integer assignment
-    // libgpod says: True if set to 0x1, false if set to 0x0.
-    m_track->compilation = newIsCompilation ? 0x1 : 0x0;
+    // libgpod says: m_track->combination: True if set to 0x1, false if set to 0x0.
+    if( m_track->compilation == newIsCompilation )
+        return;  // nothing to do
+
+    // we need to call commitChanges() without m_trackLock held, so create extra scope for it
+    {
+        QWriteLocker locker( &m_trackLock );
+        m_track->compilation = newIsCompilation ? 0x1 : 0x0;
+        m_changedFields.insert( Meta::valCompilation, newIsCompilation );
+    }
+    if( doCommit )
+         // setIsCompilation() is not a part of EditCapability, we have to commit ourselves:
+        commitChanges();
 }
 
 void
-Track::setImage( const QImage &newImage )
+Track::setImage( const QImage &newImage, bool doCommit )
 {
+    QWriteLocker locker( &m_trackLock );
     if( newImage.isNull() )
     {
         itdb_track_remove_thumbnails( m_track );
         delete m_tempImageFile;
         m_tempImageFile = 0;
-        return;
     }
-
-    // we set artwork even for devices that don't support it, everyone has new-enough iPod nowadays
-    const int maxSize = 768; // iPad screen is 1024x768, allow that big covers
-    QImage image;
-    if( newImage.width() > maxSize || newImage.height() > maxSize )
-        image = newImage.scaled( maxSize, maxSize, Qt::KeepAspectRatio, Qt::SmoothTransformation );
     else
-        image = newImage;
+    {
+        // we set artwork even for devices that don't support it, everyone has new-enough iPod nowadays
+        const int maxSize = AmarokConfig::writeBackCoverDimensions();
+        QImage image;
+        if( newImage.width() > maxSize || newImage.height() > maxSize )
+            image = newImage.scaled( maxSize, maxSize, Qt::KeepAspectRatio, Qt::SmoothTransformation );
+        else
+            image = newImage;
 
-    delete m_tempImageFile; // delete possible previous temporary file
-    m_tempImageFile = new KTemporaryFile();
-    m_tempImageFile->setSuffix( QString( ".png" ) );
-    if( !m_tempImageFile->open() )
-        return;
-    // we save the file to disk rather than pass image data to save several megabytes of RAM
-    if( !image.save( m_tempImageFile, "PNG" ) )
-        return;
-    /* this function remembers image path, it also fogots previous images (if any)
-     * and sets artwork_size, artwork_count and has_artwork m_track fields */
-    itdb_track_set_thumbnails( m_track, QFile::encodeName( m_tempImageFile->fileName() ) );
+        delete m_tempImageFile; // delete possible previous temporary file
+        m_tempImageFile = new KTemporaryFile();
+        m_tempImageFile->setSuffix( QString( ".png" ) );
+        // we save the file to disk rather than pass image data to save several megabytes of RAM
+        if( m_tempImageFile->open() && image.save( m_tempImageFile, "PNG" ) )
+            /* this function remembers image path, it also fogots previous images (if any)
+             * and sets artwork_size, artwork_count and has_artwork m_track fields */
+            itdb_track_set_thumbnails( m_track, QFile::encodeName( m_tempImageFile->fileName() ) );
+    }
+    m_changedFields.insert( IpodMeta::valImage, newImage );
+    locker.unlock();
+
+    if( doCommit )
+         // setImage() is not a part of EditCapability, we have to commit ourselves:
+        commitChanges();
 }
 
 Meta::ArtistPtr
@@ -395,17 +415,20 @@ Track::rating() const
 }
 
 void
-Track::setRating( int newRating )
+Track::setRating( int newRating, bool doCommit )
 {
     newRating = ( newRating * ITDB_RATING_STEP ) / 2;
     if( newRating == (int) m_track->rating ) // casting prevents compiler waring about signedness
         return; // nothing to do, do not notify observers
-    m_track->rating = newRating;
+
+    // we need to call commitChanges() without m_trackLock held, so create extra scope for it
     {
         QWriteLocker locker( &m_trackLock );
+        m_track->rating = newRating;
         m_changedFields.insert( Meta::valRating, newRating );
     }
-    commitChanges(); // setRating() is not a part of EditCapability, we have to commit ourselves
+    if( doCommit )
+        commitChanges(); // setRating() is not a part of EditCapability, we have to commit ourselves
 }
 
 qint64
@@ -701,21 +724,27 @@ Track::commitChanges()
 {
     static const QSet<qint64> statFields = ( QSet<qint64>() << Meta::valFirstPlayed <<
         Meta::valLastPlayed << Meta::valPlaycount << Meta::valScore << Meta::valRating );
-    if( m_changedFields.isEmpty() )
-        return;
 
-    QString path = playableUrl().path(); // needs to be here because it lock m_trackLock too
-    m_trackLock.lockForWrite();  // guard access to m_changedFields
-    if( AmarokConfig::writeBackStatistics() ||
-        !(QSet<qint64>::fromList( m_changedFields.keys() ) - statFields).isEmpty() )
+    QString path = playableUrl().path(); // needs to be here because it locks m_trackLock too
+    // extra scope for m_trackLock locker:
     {
-        setModifyDate( QDateTime::currentDateTime() );
-    }
+        QWriteLocker locker( &m_trackLock ); // guard access to m_changedFields
+        if( m_changedFields.isEmpty() )
+            return;
 
-    // writeTags() respects AmarokConfig::writeBackStatistics, AmarokConfig::writeBack()
-    Meta::Tag::writeTags( path, m_changedFields );
-    m_changedFields.clear();
-    m_trackLock.unlock();
+        if( AmarokConfig::writeBackStatistics() ||
+            !(QSet<qint64>::fromList( m_changedFields.keys() ) - statFields).isEmpty() )
+        {
+            setModifyDate( QDateTime::currentDateTime() );
+        }
+
+        // write tags to file in a thread in order not to block
+        WriteTagsJob *job = new WriteTagsJob( path, m_changedFields );
+        job->connect( job, SIGNAL(done(ThreadWeaver::Job*)), job, SLOT(deleteLater()) );
+        ThreadWeaver::Weaver::instance()->enqueue( job );
+
+        m_changedFields.clear();
+    }
     notifyObservers();
 }
 
@@ -723,13 +752,7 @@ Track::commitChanges()
 
 Album::Album( Track *track )
     : m_track( track )
-    , m_albumArtist( 0 ) // for lazy-reading album artist
 {
-}
-
-Album::~Album()
-{
-    delete m_albumArtist;
 }
 
 QString Album::name() const
@@ -741,28 +764,38 @@ QString Album::name() const
 bool
 Album::isCompilation() const
 {
-    readAlbumArtist();
-    if( m_albumArtist->isEmpty() )
-        // set compilation flag, otherwise the album would be invisible in collection
-        // browser if "Album Artist / Album" view is selected.
-        return true;
-    return m_track->m_track->compilation == 0x1;
+    return m_track->m_track->compilation;
+}
+
+bool
+Album::canUpdateCompilation() const
+{
+    Collections::Collection *coll = m_track->collection();
+    return coll ? coll->isWritable() : false;
+}
+
+void
+Album::setCompilation( bool isCompilation )
+{
+    m_track->setIsCompilation( isCompilation );
 }
 
 bool
 Album::hasAlbumArtist() const
 {
-    readAlbumArtist();
-    return !m_albumArtist->isEmpty();
+    return !isCompilation();
 }
 
 Meta::ArtistPtr
 Album::albumArtist() const
 {
-    readAlbumArtist();
-    if( m_albumArtist->isEmpty() )
+    if( isCompilation() )
         return Meta::ArtistPtr();
-    return Meta::ArtistPtr( new Artist( *m_albumArtist ) );
+    QReadLocker locker( &m_track->m_trackLock );
+    QString albumArtistName = QString::fromUtf8( m_track->m_track->albumartist );
+    if( albumArtistName.isEmpty() )
+        albumArtistName = QString::fromUtf8( m_track->m_track->artist );
+    return Meta::ArtistPtr( new Artist( albumArtistName ) );
 }
 
 bool
@@ -829,17 +862,23 @@ Album::image( int size ) const
     return albumImage;
 }
 
-void
-Album::readAlbumArtist() const
+bool Album::canUpdateImage() const
 {
-    if( m_albumArtist )
-        return;
-    QReadLocker( &m_track->m_trackLock );
-    /* We have to guess albumArtist, because setting empty album artist (like Amarok does
-     * for compilations) breaks compilations feature on iPods. */
-    m_albumArtist = new QString( ArtistHelper::bestGuessAlbumArtist(
-        QString::fromUtf8( m_track->m_track->albumartist ),
-        QString::fromUtf8( m_track->m_track->artist ),
-        QString::fromUtf8( m_track->m_track->genre ),
-        QString::fromUtf8( m_track->m_track->composer ) ) );
+#ifdef GDKPIXBUF_FOUND
+    Collections::Collection *coll = m_track->collection();
+    return coll ? coll->isWritable() : false;
+#else
+    return false;
+#endif
+}
+
+void Album::setImage( const QImage &image )
+{
+    m_track->setImage( image );
+    CoverCache::invalidateAlbum( this );
+}
+
+void Album::removeImage()
+{
+    setImage( QImage() );
 }

@@ -196,12 +196,11 @@ public:
     virtual void setImage( const QImage &image );
 
     virtual bool hasCapabilityInterface( Capabilities::Capability::Type type ) const;
-    virtual Capabilities::Capability* asCapabilityInterface( Capabilities::Capability::Type type );
+    virtual Capabilities::Capability* createCapabilityInterface( Capabilities::Capability::Type type );
 
     //TimecodeAlbum specific methods
     void addTrack( TimecodeTrackPtr track );
     void setAlbumArtist( TimecodeArtistPtr artist );
-    void setIsCompilation( bool compilation );
 
     bool operator==( const Meta::Album &other ) const
     {

@@ -192,16 +192,8 @@ class AMAROK_CORE_EXPORT CollectionLocation : public QObject
         void prepareRemove( const Meta::TrackList &tracks );
         void prepareRemove( Collections::QueryMaker *qm );
 
-        /** Removes a track from the collection (not from disk)
-         * Removes a track from the database ONLY if the file does NOT exist on disk.
-         * Do not call this method directly. Use the prepareRemove() method.
-         * @param track a track that does not exist on disk to be removed from the database
-         * @return true if the database entry was removed, false otherwise
-         */
-        virtual bool remove( const Meta::TrackPtr &track );
-
-        /** Adds or merges a track to the collection (not to the disk)
-         * In
+        /**
+         * Adds or merges a track to the collection (not to the disk)
          * Inserts a set of TrackPtrs directly into the database without needing to actual move any files
          * This is a hack required by the DatabaseImporter
          * TODO: Remove this hack

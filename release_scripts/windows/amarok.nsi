@@ -31,6 +31,7 @@ You will also need to install http://nsis.sourceforge.net/Nsis7z_plug-in
 !define MUI_LANGDLL_ALLLANGUAGES
 !define MUI_ICON "amarok.ico"
 !define MUI_FINISHPAGE_RUN "$INSTDIR\bin\amarok.exe"
+!define PRODUCT_WEB_SITE http://amarok.kde.org/
 
 ;save language
 !define MUI_LANGDLL_REGISTRY_ROOT "HKLM" 
@@ -79,14 +80,15 @@ ShowInstDetails hide
 !define MUI_PAGE_HEADER_TEXT $(PAGE_LICENSE_HEADER_TEXT)
 !define MUI_PAGE_HEADER_SUBTEXT $(PAGE_LICENSE_SUBTEXT)
 !define MUI_LICENSEPAGE_TEXT_BOTTOM " "
-!define MUI_LICENSEPAGE_BUTTON $(PAGE_LICENSE_BUTTON_TEXT)
+!define MUI_LICENSEPAGE_BUTTON $(^NextBtn)
 !insertmacro MUI_PAGE_LICENSE "..\..\COPYING"
 !insertmacro MUI_PAGE_DIRECTORY 
 !insertmacro MUI_PAGE_STARTMENU Application $StartMenuFolder
 !define MUI_COMPONENTSPAGE_NODESC
 !insertmacro MUI_PAGE_COMPONENTS
 !insertmacro MUI_PAGE_INSTFILES
-!define MUI_FINISHPAGE_LINK_LOCATION "http://amarok.kde.org/"
+!define MUI_FINISHPAGE_LINK "$(VISIT_PROJECT_HOMEPAGE)"
+!define MUI_FINISHPAGE_LINK_LOCATION "${PRODUCT_WEB_SITE}"
 !insertmacro MUI_PAGE_FINISH
 
 
@@ -102,14 +104,22 @@ Section "Amarok" SECTION_AMAROK
     SetOutPath $INSTDIR
     SetShellVarContext all
     
-    ExecWait '"$INSTDIR\bin\kdeinit4.exe" "--shutdown"'
+    ExecWait '"$INSTDIR\bin\kdeinit4.exe" "--terminate"'
     WriteRegStr HKLM "${regkey}" "Install_Dir" "$INSTDIR"
+    WriteRegStr HKLM "${regkey}" "Version" "${version}"
+    WriteRegStr HKLM "${regkey}" "" "$INSTDIR\bin\amarok.exe"
+    
     WriteRegStr HKLM "${uninstkey}" "DisplayName" "Amarok (remove only)"
+    WriteRegStr HKLM "${uninstkey}" "DisplayIcon" "$INSTDIR\${MUI_ICON}"
+    WriteRegStr HKLM "${uninstkey}" "DisplayVersion" "${version}"
+    WriteRegStr HKLM "${uninstkey}" "URLInfoAbout" "${PRODUCT_WEB_SITE}"
     WriteRegStr HKLM "${uninstkey}" "UninstallString" '"$INSTDIR\${uninstaller}"'
+    WriteRegStr HKLM "${uninstkey}" "Publisher" "${company}"
 
     ; package all files, recursively, preserving attributes
     ; assume files are in the correct places
 
+    File ${MUI_ICON}
     File /a /r /x "*.nsi" /x "${setupname}" "${srcdir}\*.*" 
 
     WriteUninstaller "${uninstaller}"
@@ -143,7 +153,7 @@ SectionEnd
  
 Section "Uninstall"
     SetShellVarContext all
-    ExecWait '"$INSTDIR\bin\kdeinit4.exe" "--shutdown"'
+    ExecWait '"$INSTDIR\bin\kdeinit4.exe" "--terminate"'
 
     DeleteRegKey HKLM "${uninstkey}"
     DeleteRegKey HKLM "${regkey}"

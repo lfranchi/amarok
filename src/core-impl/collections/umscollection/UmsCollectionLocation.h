@@ -41,9 +41,6 @@ class UmsCollectionLocation : public Collections::CollectionLocation
         virtual bool isWritable() const;
         virtual bool isOrganizable() const;
 
-        virtual bool remove( const Meta::TrackPtr &track );
-        virtual bool insert( const Meta::TrackPtr &track, const QString &url );
-
         virtual void copyUrlsToCollection( const QMap<Meta::TrackPtr, KUrl> &sources,
                                            const Transcoding::Configuration &configuration );
         virtual void removeUrlsFromCollection( const Meta::TrackList &sources );

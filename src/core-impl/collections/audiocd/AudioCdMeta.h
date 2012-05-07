@@ -164,18 +164,21 @@ class AudioCdAlbum : public Meta::Album
         virtual QString name() const;
 
         virtual bool isCompilation() const;
+        virtual bool canUpdateCompilation() const;
+        virtual void setCompilation( bool compilation );
+
         virtual bool hasAlbumArtist() const;
         virtual ArtistPtr albumArtist() const;
         virtual TrackList tracks();
 
         virtual QImage image( int size = 0 ) const;
+        virtual bool hasImage( int size = 0 ) const;
         virtual bool canUpdateImage() const;
         virtual void setImage( const QImage &image );
 
         //AudioCdAlbum specific methods
         void addTrack( AudioCdTrackPtr track );
         void setAlbumArtist( AudioCdArtistPtr artist );
-        void setIsCompilation( bool compilation );
 
     private:
         QString m_name;

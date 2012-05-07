@@ -89,6 +89,14 @@ class IpodCollection : public Collections::Collection, public Meta::Observer
 
         // IpodCollection methods:
         /**
+         * In-fact second phase of the construcor. Called by CollectionFactory right after
+         * constructor. Should return true if the collection initialised itself successfully
+         * and should be shown to the user; return value of false means it should be
+         * destroyed and forgotten by the factory.
+         */
+        bool init();
+
+        /**
          * Get local mount point. Can return QString() in case no reasonamble mountpoint
          * is available
          */
@@ -151,6 +159,11 @@ class IpodCollection : public Collections::Collection, public Meta::Observer
          */
         void slotShowConfigureDialog( const QString &errorMessage = QString() );
 
+        /**
+         * Overriden to update m_lastUpdated timestamp
+         */
+        virtual void collectionUpdated();
+
     private slots:
         /**
          * Tries to initialize iPod, read the database, add tracks. (Re)shows the
@@ -164,7 +177,7 @@ class IpodCollection : public Collections::Collection, public Meta::Observer
         void slotApplyConfiguration();
 
         /**
-         * Starts a timer that emits updated() signal after 2 seconds.
+         * Starts a timer that ensures we emit updated() signal sometime in future.
          */
         void slotStartUpdateTimer();
 
@@ -196,11 +209,6 @@ class IpodCollection : public Collections::Collection, public Meta::Observer
         static const QStringList s_audioFileTypes;
         static const QStringList s_videoFileTypes;
         static const QStringList s_audioVideoFileTypes;
-
-        /**
-         * In-fact construcor used to share code between different constructors.
-         */
-        void init();
 
         // method for IpodParseTracksJob and IpodCopyTracksJob:
         /**
@@ -247,6 +255,7 @@ class IpodCollection : public Collections::Collection, public Meta::Observer
         Itdb_iTunesDB *m_itdb;
         QMutex m_itdbMutex;
         QTimer m_updateTimer;
+        qint64 m_lastUpdated; /* msecs since epoch */
         QTimer m_writeDatabaseTimer;
         QTemporaryFile *m_preventUnmountTempFile;
         QString m_mountPoint;
@@ -255,6 +264,7 @@ class IpodCollection : public Collections::Collection, public Meta::Observer
         IpodPlaylistProvider *m_playlistProvider;
         QAction *m_configureAction;
         QAction *m_ejectAction;
+        QAction *m_consolidateAction;
 };
 
 #endif // IPODCOLLECTION_H

@@ -2,8 +2,16 @@ Amarok ChangeLog
 ================
 (C) 2002-2011 the Amarok authors.
 
-Version 2.6-Beta 1
+VERSION 2.6-Beta 1
   FEATURES:
+    * Provide Repopulate and Turn off link in "Dynamic Mode Enabled" bagde.
+    * Support for setting cover images for albums on USB Mass Storage devices.
+    * Support for setting and unsetting cover images for iPod albums, can
+      write back covers to file meta-data too, respects configuration.
+    * Amazon store: ability to check out an item directly without using the Amarok
+      shopping cart. (BR 288808)
+    * Amarok now includes the Free Music Charts service by default.
+    * The maximum dimensions for embedded covers are now configurable. (BR 279493)
     * Small configuration dialog for iPods that shows troubleshooting information
       and allows to change iPod name.
     * Improved usability of iPod playlists: iPod collection automatically transfers
@@ -38,6 +46,14 @@ Version 2.6-Beta 1
       vice versa. (BR 142579)
 
   CHANGES:
+    * Make keyboard & mouse behaviour of saved playlists browser same as of the
+      collection browser, including the delete key.
+    * Delete and Shift + Delete keys now work as expected in collection browser.
+    * Preserve statistics when copying or moving tracks to Local Collection.
+    * Common album actions such as Show cover, Show under Various Artists are now
+      available for all collections that support it, not just Local collection.
+    * When copying files to iPod, ensure target directories exist.
+    * When writing covers to files, all existing covers will be replaced.
     * PulseAudio status in diagnostic dialog.
     * optional libgpod dependency raised to 0.8.2 to support newest iPods.
     * Amarok now prevents accidental unmounting of iPods in (small) time-frames
@@ -64,11 +80,19 @@ Version 2.6-Beta 1
     * Album artist is now guessed for tracks that do not belong into any
       collection and tracks from USB Mass Storage collection. Guessing uses the
       same algorithm as Local Collection.
-    * libgpod requirement raised from 0.7.0 to 0.7.93 for better maintainability.
     * When hovering iPod, UMS or MTP collection in collection browser,
       "1.2 GB free" is shown instead of "85% used"; thicker capacity bar.
 
   BUGFIXES:
+    * When turning dynamic playlist on, immediately populate playlist and clear
+      any possible playlist sorting. (BR 220558)
+    * Fix transcoding with ffmpeg >= 0.10; patch by Julian Simioni.
+    * Fix crash on start when Qt is build with debugging assertions. (BR 285720)
+    * Fix URLs in MP3tunes, gpodder.net and Last.fm config dialogs. (BR 299088)
+    * Fix drag & drop in playlist layout editor, filename layout editor and
+      filter editor for non-english locales. (BR 215402)
+    * Fix bug where MySQL password could not be set to 'password'; patch by
+      Lachlan Dufton. (BR 272346)
     * Detection and elimination of stale and orphaned iPod tracks now works
       correctly; users are notified about these when iPod is plugged in.
     * iPod playlists now work correctly. (BR 289304)
@@ -108,8 +132,12 @@ Version 2.6-Beta 1
     * Fix rare APG solver crash. (BR 290533)
     * Compilations are handled more consistently on iPods. (BR 232072)
     * MPRIS2 compliance: don't use track ids that start with /org/mpris/
+    * MPRIS2: be better about emitting the Seeked signal
+    * MPRIS2: fix the mpris:artUrl metadata property
+    * MPRIS2: make sure that the Seeked signal is sent out when the track time
+              moves backwards (eg: when the track changes)
 
-Version 2.5
+VERSION 2.5
   FEATURES:
     * Now It's possible to use formated strings for prefix and suffix in 
       Playlist's layout items.
@@ -150,7 +178,7 @@ Version 2.5
     * Don't block the UI while scanning UMS device.
     * Allow going back and forward in Amazon store. Thanks to GCI student Nikola Miljkovic.
 
-Version 2.5.0-Beta 1
+VERSION 2.5.0-Beta 1
   FEATURES:
     * New "equals" match in collection filter - e.g. label:=pop finds songs
       with label "pop" but not songs with label "electro pop". (BR 260004)
@@ -243,7 +271,7 @@ Version 2.5.0-Beta 1
     * Fixed issue with TagDialog's "Open Destination" button, now It opens
       correct directory instead of parent. (BR 279147)
 
-Version 2.4.3
+VERSION 2.4.3
   BUGFIXES:
     * Fix KWallet auth requests on every track change. (BR 278177)
     * Display correct values for pretty times (playlist length) > 1 day.
@@ -255,7 +283,7 @@ Version 2.4.3
     * Don't block the UI while calculating the filename previews. (BR 233196)
     * Make M3U & PLS playlist files editable from Saved Playlists. (BR 245963)
 
-Version 2.4.2
+VERSION 2.4.2
     * This version number was skipped.
 
 VERSION 2.4.2-Beta 1

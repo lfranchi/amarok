@@ -75,7 +75,7 @@ CollectionTreeView::CollectionTreeView( QWidget *parent)
     sortByColumn( 0, Qt::AscendingOrder );
     setSelectionMode( QAbstractItemView::ExtendedSelection );
     setSelectionBehavior( QAbstractItemView::SelectRows );
-    setEditTriggers( /* SelectedClicked | */ EditKeyPressed );
+    setEditTriggers( EditKeyPressed );
 #ifdef Q_WS_MAC
     setVerticalScrollMode( QAbstractItemView::ScrollPerItem ); // for some bizarre reason w/ some styles on mac
     setHorizontalScrollMode( QAbstractItemView::ScrollPerItem ); // per-pixel scrolling is slower than per-item
@@ -84,7 +84,7 @@ CollectionTreeView::CollectionTreeView( QWidget *parent)
     setHorizontalScrollMode( QAbstractItemView::ScrollPerPixel ); // Scrolling per item is really not smooth and looks terrible
 #endif
 
-    setDragDropMode( QAbstractItemView::DragDrop ); // implement drop when time allows
+    setDragDropMode( QAbstractItemView::DragDrop );
 
     if( KGlobalSettings::graphicEffectsLevel() != KGlobalSettings::NoEffects )
         setAnimated( true );
@@ -221,24 +221,24 @@ CollectionTreeView::contextMenuEvent( QContextMenuEvent* event )
     menu.addSeparator();
     actions.clear();
 
-    QActionList customActions = createCustomActions( indices );
-    KMenu menuCustom( i18n( "Album" )  );
-    foreach( QAction *action, customActions )
+    QActionList albumActions = createCustomActions( indices );
+    KMenu menuAlbum( i18n( "Album" )  );
+    foreach( QAction *action, albumActions )
     {
         if( !action->parent() )
-            action->setParent( &menuCustom );
+            action->setParent( &menuAlbum );
     }
 
-    if( customActions.count() > 1 )
+    if( albumActions.count() > 1 )
     {
-        menuCustom.addActions( customActions );
-        menuCustom.setIcon( KIcon( "filename-album-amarok" ) );
-        menu.addMenu( &menuCustom );
+        menuAlbum.addActions( albumActions );
+        menuAlbum.setIcon( KIcon( "filename-album-amarok" ) );
+        menu.addMenu( &menuAlbum );
         menu.addSeparator();
     }
-    else if( customActions.count() == 1 )
+    else if( albumActions.count() == 1 )
     {
-        menu.addActions( customActions );
+        menu.addActions( albumActions );
     }
 
     QActionList collectionActions = createCollectionActions( indices );
@@ -276,7 +276,7 @@ CollectionTreeView::contextMenuEvent( QContextMenuEvent* event )
     KMenu moveMenu( i18n( "Move to Collection" ) );
     if( !m_currentMoveDestination.empty() )
     {
-        // moveMenu.setIcon(); // TODO: no move icon
+        moveMenu.setIcon( KIcon( "go-jump" ) );
         moveMenu.addActions( m_currentMoveDestination.keys() );
         menu.addMenu( &moveMenu );
     }
@@ -311,9 +311,11 @@ void CollectionTreeView::mouseDoubleClickEvent( QMouseEvent *event )
         return;
     }
 
+    bool isExpandable = model()->hasChildren( index );
+    bool wouldExpand = isExpandable && !KGlobalSettings::singleClick(); // we're in doubleClick
     if( event->button() == Qt::LeftButton &&
         event->modifiers() == Qt::NoModifier &&
-        (KGlobalSettings::singleClick() || !model()->hasChildren( index )) )
+        !wouldExpand )
     {
         CollectionTreeItem *item = getItemFromIndex( index );
         playChildTracks( item, Playlist::AppendAndPlay );
@@ -419,7 +421,7 @@ void CollectionTreeView::keyPressEvent( QKeyEvent *event )
     QModelIndexList indices = selectedIndexes();
     if( indices.isEmpty() )
     {
-        QTreeView::keyPressEvent( event );
+        Amarok::PrettyTreeView::keyPressEvent( event );
         return;
     }
 
@@ -445,6 +447,11 @@ void CollectionTreeView::keyPressEvent( QKeyEvent *event )
         case Qt::Key_Return:
             slotAppendChildTracks();
             return;
+        case Qt::Key_Delete:
+            if( !onlyOneCollection( indices ) )
+                break;
+            removeTracks( m_currentItems, /* useTrash */ !( event->modifiers() & Qt::ShiftModifier ) );
+            return;
         case Qt::Key_Up:
             if( current.parent() == QModelIndex() && current.row() == 0 )
             {
@@ -466,7 +473,7 @@ void CollectionTreeView::keyPressEvent( QKeyEvent *event )
         default:
             break;
     }
-    QTreeView::keyPressEvent( event );
+    Amarok::PrettyTreeView::keyPressEvent( event );
 }
 
 void
@@ -873,6 +880,8 @@ CollectionTreeView::createBasicActions( const QModelIndexList & indices )
         {
             m_appendAction = new QAction( KIcon( "media-track-add-amarok" ), i18n( "&Add to Playlist" ), this );
             m_appendAction->setProperty( "popupdropper_svg_id", "append" );
+            // key shortcut is only for display purposes here, actual one is determined by View in Model/View classes
+            m_appendAction->setShortcut( Qt::Key_Enter );
             connect( m_appendAction, SIGNAL( triggered() ), this, SLOT( slotAppendChildTracks() ) );
         }
 
@@ -1107,12 +1116,16 @@ QHash<QAction*, Collections::Collection*> CollectionTreeView::getRemoveActions( 
 
     KAction *trashAction = new KAction( KIcon( "user-trash" ), i18n( "Move Tracks to Trash" ), 0 );
     trashAction->setProperty( "popupdropper_svg_id", "delete" );
+    // key shortcut is only for display purposes here, actual one is determined by View in Model/View classes
+    trashAction->setShortcut( Qt::Key_Delete );
     connect( trashAction, SIGNAL(triggered(Qt::MouseButtons,Qt::KeyboardModifiers)),
                 this, SLOT(slotTrashTracks()) );
     currentRemoveDestination.insert( trashAction, collection );
 
     KAction *deleteAction = new KAction( KIcon( "remove-amarok" ), i18n( "Delete Tracks" ), 0 );
     deleteAction->setProperty( "popupdropper_svg_id", "delete" );
+    // key shortcut is only for display purposes here, actual one is determined by View in Model/View classes
+    deleteAction->setShortcut( Qt::SHIFT + Qt::Key_Delete );
     connect( deleteAction, SIGNAL(triggered(Qt::MouseButtons,Qt::KeyboardModifiers)),
                 this, SLOT(slotRemoveTracks()) );
     currentRemoveDestination.insert( deleteAction, collection );

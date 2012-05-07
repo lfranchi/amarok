@@ -39,7 +39,6 @@
 #include <solid/predicate.h>
 #include <solid/storageaccess.h>
 #include <ThreadWeaver/Weaver>
-#include <KMessageBox>
 
 #include <QWeakPointer>
 
@@ -57,15 +56,16 @@ IpodCollection::IpodCollection( const QDir &mountPoint )
     , m_configureDialog( 0 )
     , m_mc( new Collections::MemoryCollection() )
     , m_itdb( 0 )
+    , m_lastUpdated( 0 )
     , m_preventUnmountTempFile( 0 )
     , m_mountPoint( mountPoint.absolutePath() )
     , m_iphoneAutoMountpoint( 0 )
     , m_playlistProvider( 0 )
     , m_configureAction( 0 )
     , m_ejectAction( 0 )
+    , m_consolidateAction( 0 )
 {
     DEBUG_BLOCK
-    init();
 }
 
 IpodCollection::IpodCollection( const QString &uuid )
@@ -73,28 +73,27 @@ IpodCollection::IpodCollection( const QString &uuid )
     , m_configureDialog( 0 )
     , m_mc( new Collections::MemoryCollection() )
     , m_itdb( 0 )
+    , m_lastUpdated( 0 )
     , m_preventUnmountTempFile( 0 )
     , m_playlistProvider( 0 )
     , m_configureAction( 0 )
     , m_ejectAction( 0 )
+    , m_consolidateAction( 0 )
 {
     DEBUG_BLOCK
+    // following constructor displays sorry message if it cannot mount iPhone:
     m_iphoneAutoMountpoint = new IphoneMountPoint( uuid );
     m_mountPoint = m_iphoneAutoMountpoint->mountPoint();
-    if( m_mountPoint.isEmpty() )
-    {
-        KMessageBox::sorry( 0, i18n("Cannot connect to iPhone or iPad. More "
-            "information is available in the Amarok debug log.") );
-        return;
-    }
-    init();
 }
 
-void IpodCollection::init()
+bool IpodCollection::init()
 {
+    if( m_mountPoint.isEmpty() )
+        return false;  // we have already displayed sorry message
+
     m_updateTimer.setSingleShot( true );
     connect( this, SIGNAL(startUpdateTimer()), SLOT(slotStartUpdateTimer()) );
-    connect( &m_updateTimer, SIGNAL(timeout()), SIGNAL(updated()) );
+    connect( &m_updateTimer, SIGNAL(timeout()), SLOT(collectionUpdated()) );
 
     m_writeDatabaseTimer.setSingleShot( true );
     connect( this, SIGNAL(startWriteDatabaseTimer()), SLOT(slotStartWriteDatabaseTimer()) );
@@ -112,9 +111,12 @@ void IpodCollection::init()
     m_itdb = IpodDeviceHelper::parseItdb( m_mountPoint, parseErrorMessage );
     m_prettyName = IpodDeviceHelper::collectionName( m_itdb ); // allows null m_itdb
 
+    // m_consolidateAction is used by the provider
+    m_consolidateAction = new QAction( KIcon( "dialog-ok-apply" ), i18n( "Re-add orphaned and forget stale tracks" ), this );
     // provider needs to be up before IpodParseTracksJob is started
     m_playlistProvider = new IpodPlaylistProvider( this );
     connect( m_playlistProvider, SIGNAL(startWriteDatabaseTimer()), SIGNAL(startWriteDatabaseTimer()) );
+    connect( m_consolidateAction, SIGNAL(triggered()), m_playlistProvider, SLOT(slotConsolidateStaleOrphaned()) );
     The::playlistManager()->addProvider( m_playlistProvider, m_playlistProvider->category() );
 
     if( m_itdb )
@@ -126,6 +128,8 @@ void IpodCollection::init()
     }
     else
         slotShowConfigureDialog( parseErrorMessage ); // shows error message and allows initializing
+
+    return true;  // we have found iPod, even if it might not be initialised
 }
 
 IpodCollection::~IpodCollection()
@@ -197,6 +201,8 @@ IpodCollection::createCapabilityInterface( Capabilities::Capability::Type type )
                 actions << m_configureAction;
             if( m_ejectAction )
                 actions << m_ejectAction;
+            if( m_consolidateAction && m_playlistProvider && m_playlistProvider->hasStaleOrOrphaned() )
+                actions << m_consolidateAction;
             return new Capabilities::ActionsCapability( actions );
         }
         case Capabilities::Capability::Transcode:
@@ -401,6 +407,12 @@ IpodCollection::slotShowConfigureDialog( const QString &errorMessage )
     m_configureDialog->raise();
 }
 
+void IpodCollection::collectionUpdated()
+{
+    m_lastUpdated = QDateTime::currentMSecsSinceEpoch();
+    emit updated();
+}
+
 void
 IpodCollection::slotInitialize()
 {
@@ -449,8 +461,8 @@ IpodCollection::slotApplyConfiguration()
     {
         IpodDeviceHelper::setIpodName( m_itdb, newName );
         m_prettyName = IpodDeviceHelper::collectionName( m_itdb );
-        slotStartWriteDatabaseTimer(); // the change should be written down to file
-        emit updated();  // no need to wait using startUpdateTimer()
+        emit startWriteDatabaseTimer(); // the change should be written down to the database
+        emit startUpdateTimer();
     }
 
     QScopedPointer<Capabilities::TranscodeCapability> tc( create<Capabilities::TranscodeCapability>() );
@@ -470,7 +482,15 @@ IpodCollection::slotApplyConfiguration()
 void
 IpodCollection::slotStartUpdateTimer()
 {
-    m_updateTimer.start( 2000 );
+    // there are no concurrency problems, this method can only be called from the main
+    // thread and that's where the timer fires
+    if( m_updateTimer.isActive() )
+        return; // already running, nothing to do
+
+    // number of milliseconds to next desired update, may be negative
+    int timeout = m_lastUpdated + 1000 - QDateTime::currentMSecsSinceEpoch();
+    // give at least 50 msecs to catch multi-tracks edits nicely on the first frame
+    m_updateTimer.start( qBound( 50, timeout, 1000 ) );
 }
 
 void

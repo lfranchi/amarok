@@ -71,33 +71,52 @@ class Album : public Meta::Album, public Base
 {
     public:
         Album( const QString &name, const Meta::ArtistPtr &albumArtist )
-            : Base( name ), m_isCompilation( false ), m_albumArtist( albumArtist ) {}
+            : Base( name )
+            , m_albumArtist( albumArtist )
+            , m_isCompilation( false )
+            , m_canUpdateCompilation( false )
+            , m_canUpdateImage( false )
+            {}
         /**
          * Copy-like constructor for MapChanger
          */
         Album( const Meta::AlbumPtr &other );
 
+        /* Meta::MetaCapability virtual methods */
+        virtual bool hasCapabilityInterface( Capabilities::Capability::Type type ) const;
+        virtual Capabilities::Capability* createCapabilityInterface( Capabilities::Capability::Type type );
+
+        /* Meta::MetaBase virtual methods */
         virtual QString name() const { return Base::name(); }
 
-        /** Meta::Album virtual methods */
+        /* Meta::Album virtual methods */
         virtual bool isCompilation() const { return m_isCompilation; }
+        virtual bool canUpdateCompilation() const { return m_canUpdateCompilation; }
+        virtual void setCompilation( bool isCompilation );
+
         virtual bool hasAlbumArtist() const { return !m_albumArtist.isNull(); }
         virtual Meta::ArtistPtr albumArtist() const { return m_albumArtist; }
         virtual Meta::TrackList tracks() { return Base::tracks(); }
 
         virtual bool hasImage( int /* size */ = 0 ) const { return !m_image.isNull(); }
         virtual QImage image( int size = 0 ) const;
-        /* We intentionally don't advertise canUpdateImage() - setting image here would not
-         * currently do what the user expects */
-        virtual void setImage( const QImage &image ) { m_image = image; }
+        virtual bool canUpdateImage() const { return m_canUpdateImage; }
+        virtual void setImage( const QImage &image );
+        virtual void removeImage();
 
         /* MemoryMeta::Album methods: */
-        void setIsCompilation( bool isCompilation ) { m_isCompilation = isCompilation; }
+        /**
+         * Re-read isCompilation, canUpdateCompilation, image, canUpdateImage from all
+         * underlying tracks.
+         */
+        void updateCachedValues();
 
     private:
-        bool m_isCompilation;
         Meta::ArtistPtr m_albumArtist;
+        bool m_isCompilation;
+        bool m_canUpdateCompilation;
         QImage m_image;
+        bool m_canUpdateImage;
 };
 
 class Composer : public Meta::Composer, public Base

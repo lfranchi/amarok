@@ -61,23 +61,6 @@ UmsCollectionLocation::isOrganizable() const
     return isWritable();
 }
 
-bool
-UmsCollectionLocation::remove( const Meta::TrackPtr &track )
-{
-    Q_UNUSED( track )
-    warning() << "Don't use UmsCollectionLocation::remove(). Use removeUrlsFromCollection().";
-    return false;
-}
-
-bool
-UmsCollectionLocation::insert( const Meta::TrackPtr &track, const QString &url )
-{
-    Q_UNUSED( track )
-    Q_UNUSED( url )
-    warning() << "Don't use UmsCollectionLocation::insert(). Use copyUrlsToCollection().";
-    return false;
-}
-
 void
 UmsCollectionLocation::copyUrlsToCollection( const QMap<Meta::TrackPtr, KUrl> &sources,
                                              const Transcoding::Configuration &configuration )
