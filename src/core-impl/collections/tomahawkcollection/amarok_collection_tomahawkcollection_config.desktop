@@ -1,0 +1,12 @@
+[Desktop Entry]
+Icon=view-services-tomahawk-amarok
+Type=Service
+ServiceTypes=Amarok/Plugin
+X-KDE-ServiceTypes=KCModule
+
+X-KDE-Library=kcm_amarok_tomahawkcollection
+X-KDE-ParentApp=amarok_collection_tomahawkcollection
+X-KDE-ParentComponents=amarok_collection_tomahawkcollection
+
+Name=Tomahawk Collection Config
+Comment=Configure Tomahawk Collection

@@ -10,6 +10,7 @@ option(WITH_UTILITIES "Enable building of utilities" ON)
 option(WITH_PLAYER "Enable building of main Amarok player" ON)
 option(WITH_MP3Tunes "Enable mp3tunes in the Amarok player, requires multiple extra dependencies" ON)
 option(WITH_IPOD "Enable iPod support in Amarok" ON)
+option(WITH_LIBTOMAHAWK "Enable tomahawk social features" ON)
 option(WITH_MYSQL_EMBEDDED "Build the embedded database library -- highly recommended" ON)
 option(WITH_PLAYGROUND "Enable building of playground scripts and applets (WARNING: some of them might have legal issues!)" OFF)
 
@@ -142,6 +143,12 @@ if( WITH_PLAYER )
     macro_optional_find_package( Mygpo-qt )
     macro_log_feature( LIBMYGPO_QT_FOUND "libmygpo-qt" "Enable gpodder.net service" "http://wiki.gpodder.org/wiki/Libmygpo-qt" FALSE "1.0.5" "" )
     macro_bool_to_01( LIBMYGPO_QT_FOUND HAVE_LIBMYGPOQT )
+
+    if( WITH_LIBTOMAHAWK )
+        find_package(LibTomahawk)
+
+        macro_log_feature( TOMAHAWK_FOUND "libtomahawk" "Enable support to tomahawk social features" "None" FALSE "" "" )
+    endif( WITH_LIBTOMAHAWK )
 
     if( WITH_IPOD )
         find_package(Ipod)

@@ -19,6 +19,8 @@ install(FILES
         emblem-ampache-scalable.svgz
         emblem-scripted.png
         emblem-scripted-scalable.svgz
+        emblem-tomahawk.png
+        emblem-tomahawk-scalable.svg
         lastfm-default-cover.png
         loading1.png
         loading2.png

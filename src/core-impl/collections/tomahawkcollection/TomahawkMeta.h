@@ -1,0 +1,272 @@
+/****************************************************************************************
+ * Copyright (c) 2012 Lucas Lira Gomes <x8lucas8x@gmail.com>                            *
+ *                                                                                      *
+ * This program is free software; you can redistribute it and/or modify it under        *
+ * the terms of the GNU General Public License as published by the Free Software        *
+ * Foundation; either version 2 of the License, or (at your option) any later           *
+ * version.                                                                             *
+ *                                                                                      *
+ * This program is distributed in the hope that it will be useful, but WITHOUT ANY      *
+ * WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A      *
+ * PARTICULAR PURPOSE. See the GNU General Public License for more details.             *
+ *                                                                                      *
+ * You should have received a copy of the GNU General Public License along with         *
+ * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
+ ****************************************************************************************/
+
+#ifndef TOMAHAWKMETA_H
+#define TOMAHAWKMETA_H
+
+#include "core/meta/Meta.h"
+#include "MetaValues.h"
+
+#include <KTemporaryFile>
+
+class TomahawkCollection;
+
+namespace TomahawkMeta
+{
+    /**
+     * An iPod track. album, artist, composer etc. are invisible to ouside world, they are
+     * proxied in the MemoMeta track. All methods in this class are thread-safe with a few
+     * exceptions that are noted in relevant method docstrings.
+     */
+    class Track : public Meta::Track
+    {
+        public:
+            /**
+             * Constructs an iPod track from an existing libgpod track structure. Caller
+             * must guarantee that these are already added to the collection's itdb databse.
+             */
+            explicit Track( Track *tomahawkTrack );
+
+            /**
+             * Constructs an iPod track out of an existing track by copying its meta-data
+             */
+            explicit Track( const Meta::TrackPtr &originalTrack );
+
+            virtual ~Track();
+
+            // Meta::MetaCapability methods:
+            virtual bool hasCapabilityInterface( Capabilities::Capability::Type type ) const;
+            virtual Capabilities::Capability *createCapabilityInterface( Capabilities::Capability::Type type );
+
+            // Meeta::MetaBase methods:
+            virtual QString name() const;
+
+            virtual KUrl playableUrl() const;
+            virtual QString prettyUrl() const;
+            virtual QString uidUrl() const;
+            virtual bool isPlayable() const;
+
+            virtual Meta::AlbumPtr album() const;
+            virtual Meta::ArtistPtr artist() const;
+            virtual Meta::ComposerPtr composer() const;
+            virtual Meta::GenrePtr genre() const;
+            virtual Meta::YearPtr year() const;
+
+            virtual qreal bpm() const;
+            virtual QString comment() const;
+
+            virtual double score() const;
+            virtual void setScore( double newScore );
+
+            virtual int rating() const;
+            virtual void setRating( int newRating );
+
+            virtual qint64 length() const;
+            virtual int filesize() const;
+            virtual int sampleRate() const;
+            virtual int bitrate() const;
+
+            virtual QDateTime createDate() const;
+            virtual QDateTime modifyDate() const;
+
+            virtual int trackNumber() const;
+            virtual int discNumber() const;
+
+            virtual QDateTime lastPlayed() const;
+            virtual QDateTime firstPlayed() const;
+            virtual int playCount() const;
+
+            virtual QString type() const;
+
+            virtual void finishedPlaying( double playedFraction );
+
+            virtual bool inCollection() const;
+            virtual Collections::Collection* collection() const;
+
+            // TomahawkMeta::Track methods:
+
+            /**
+             * Return a pointer to TomahawkMeta::Track given pointer to underlying libgpod
+             * track. Does not attempt to create the track, so it may return null ptr if
+             * there is no TomahawkMeta::Track associated with given libgpod track.
+             */
+            static Meta::TrackPtr fromTomahawkTrack( const Track *tomahawkTrack );
+
+            /**
+             * Return a pointer to underlying libgpod track. You aren't allowed to cache
+             * the pointer - TomahawkMeta::Track owns it. Guaranteed to be non-null and
+             * constant throughout the lifetime of TomahawkMeta::Track.
+             */
+            Track *track() const;
+
+            /**
+             * Set collection this track belongs to. If collection is not null, (re)set
+             * the mount point stored in track. (affects playableUrl())
+             */
+            void setCollection( QWeakPointer<TomahawkCollection> collection );
+
+            // Methods for EditCapability:
+            void setAlbum( const QString &newAlbum );
+            void setAlbumArtist( const QString &newAlbumArtist );
+            void setArtist( const QString &newArtist );
+            void setComposer( const QString &newComposer );
+            void setGenre( const QString &newGenre );
+            void setYear( int newYear );
+            void setTitle( const QString &newTitle );
+            void setComment( const QString &newComment );
+            void setTrackNumber( int newTrackNumber );
+            void setDiscNumber( int newDiscNumber );
+            void setBpm( const qreal newBpm );
+
+            // Methods for copy constructor:
+            void setFirstPlayed( const QDateTime &time );
+            void setLastPlayed( const QDateTime &time );
+            void setPlayCount( const int playcount );
+            void setIsCompilation( bool newIsCompilation );
+            void setImage( const QImage &newImage );
+            void setLength( qint64 newLength );
+            void setSampleRate( int newSampleRate );
+            void setBitrate( int newBitrate );
+            void setCreateDate( const QDateTime &newDate );
+            void setModifyDate( const QDateTime &newDate );
+            void setType( const QString &newType );
+
+            /**
+             * calls notifyObservers() so that observers (mainly TomahawkCollection) catch the
+             * changes. You _must_ call this method adter using one of the set* methods,
+             * with exception of setRating() and setScore() that are part of Meta::Track.
+             *
+             * This method also sets modifyDate() to currect moment.
+             */
+            void commitChanges();
+
+        private:
+            friend class Album; // so that is can access m_track and friends
+
+            /**
+             * Meta::Track is memory-managed using KSharedPointer to QSharedData, but
+             * TomahawkCollection's memory management is out of our control, therefore the
+             * weak pointer.
+             */
+            QWeakPointer<TomahawkCollection> m_coll;
+
+            /**
+             * Associated libgpod track structure that holds all the data, we own this
+             * pointer
+             */
+            Track *const m_track; // yes, the address is constant, not the track
+    };
+
+    /**
+     * Dummy Artist that just stores its name; not visible from outside - iPod tracks are
+     * proxied by MemoryMeta that creates its own Artist entities.
+     */
+    class Artist : public Meta::Artist
+    {
+        public:
+            Artist( const QString &name ) : m_name( name ) {}
+            virtual ~Artist() {}
+
+            virtual QString name() const { return m_name; }
+            virtual Meta::TrackList tracks() { return Meta::TrackList(); }
+
+        private:
+            QString m_name;
+    };
+
+    /**
+     * For performance reasons, Album stores just pointer to the tracks and reads all its
+     * fields on-demand.
+     */
+    class Album : public Meta::Album
+    {
+        public:
+            Album( Track *track );
+            virtual ~Album();
+
+            virtual QString name() const;
+            // dummy, iPod tracks are supposed to be proxied by MemoryMeta which handles this
+            virtual Meta::TrackList tracks() { return Meta::TrackList(); }
+
+            virtual bool isCompilation() const;
+            virtual bool hasAlbumArtist() const;
+            virtual Meta::ArtistPtr albumArtist() const;
+
+            virtual bool hasImage( int size = 0 ) const;
+            virtual QImage image(int size = 0) const;
+
+        private:
+            /** Must be called _without_ m_trackLock held! */
+            void readAlbumArtist() const;
+
+            KSharedPtr<Track> m_track;
+            mutable QString *m_albumArtist;
+    };
+
+    /**
+     * Dummy Composer that just stores its name; not visible from outside - iPod tracks are
+     * proxied by MemoryMeta that creates its own Composer entities.
+     */
+    class Composer : public Meta::Composer
+    {
+        public:
+            Composer( const QString &name ) : m_name( name ) {}
+            virtual ~Composer() {}
+
+            virtual QString name() const { return m_name; }
+            virtual Meta::TrackList tracks() { return Meta::TrackList(); }
+
+        private:
+            QString m_name;
+    };
+
+    /**
+     * Dummy Genre that just stores its name; not visible from outside - iPod tracks are
+     * proxied by MemoryMeta that creates its own Genre entities.
+     */
+    class Genre : public Meta::Genre
+    {
+        public:
+            Genre( const QString &name ) : m_name( name ) {}
+            virtual ~Genre() {}
+
+            virtual QString name() const { return m_name; }
+            virtual Meta::TrackList tracks() { return Meta::TrackList(); }
+
+        private:
+            QString m_name;
+    };
+
+    /**
+     * Dummy Year that just stores its name; not visible from outside - iPod tracks are
+     * proxied by MemoryMeta that creates its own Year entities.
+     */
+    class Year : public Meta::Year
+    {
+        public:
+            Year( const QString &name ) : m_name( name ) {}
+            virtual ~Year() {}
+
+            virtual QString name() const { return m_name; }
+            virtual Meta::TrackList tracks() { return Meta::TrackList(); }
+
+        private:
+            QString m_name;
+    };
+
+} // namespace TomahawkMeta
+
+#endif // TOMAHAWKMETA_H

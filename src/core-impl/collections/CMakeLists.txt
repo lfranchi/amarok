@@ -11,6 +11,7 @@ add_subdirectory( daap )
 add_subdirectory( audiocd )
 
 add_subdirectory( ipodcollection )
+add_subdirectory( tomahawkcollection )
 add_subdirectory( mtpcollection )
 add_subdirectory( umscollection )
 add_subdirectory( db )
