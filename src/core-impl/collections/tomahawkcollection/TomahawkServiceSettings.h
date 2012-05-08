@@ -29,8 +29,8 @@ namespace Tomahawk
 {
     namespace Accounts
     {
-        class AccountListModelFilterProxy;
-        class AccountListModel;
+        class AccountModelFilterProxy;
+        class AccountModel;
         class AccountFactory;
         class Account;
     }
@@ -61,8 +61,8 @@ private slots:
 private:
     Ui::TomahawkConfigWidget *m_configDialog;
 
-    Tomahawk::Accounts::AccountListModel* m_accountModel;
-    Tomahawk::Accounts::AccountListModelFilterProxy* m_accountProxy;
+    Tomahawk::Accounts::AccountModel* m_accountModel;
+    Tomahawk::Accounts::AccountModelFilterProxy* m_accountProxy;
 };
 
 #endif // GPODDERSERVICESETTINGS_H

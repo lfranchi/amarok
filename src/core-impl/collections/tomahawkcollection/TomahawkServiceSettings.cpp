@@ -18,21 +18,23 @@
 
 #include "TomahawkServiceSettings.h"
 
-#include "AccountListDelegate.h"
-#include "AccountListFactoryWrapper.h"
-#include "AccountListModelFilterProxy.h"
-#include "AccountListModel.h"
+#include "accounts/AccountDelegate.h"
+#include "accounts/AccountFactoryWrapper.h"
+#include "accounts/AccountModelFilterProxy.h"
+#include "accounts/AccountModel.h"
 #include "core/support/Debug.h"
-#include "/home/llg/Programacao/tomahawk/src/libtomahawk/accounts/Account.h"
-#include "/home/llg/Programacao/tomahawk/src/libtomahawk/accounts/AccountManager.h"
-#include "/home/llg/Programacao/tomahawk/src/libtomahawk/database/Database.h"
-#include "/home/llg/Programacao/tomahawk/src/libtomahawk/network/Servent.h"
-#include "/home/llg/Programacao/tomahawk/src/libtomahawk/TomahawkSettings.h"
-#include "TomahawkGuiHelpers.h"
+#include "accounts/Account.h"
+#include "accounts/AccountManager.h"
+#include "database/Database.h"
+#include "network/Servent.h"
+#include "TomahawkSettings.h"
+#include "utils/GuiHelpers.h"
 
 #include <KLocale>
 #include <KMessageBox>
 #include <KPluginFactory>
+
+using namespace Tomahawk;
 
 K_PLUGIN_FACTORY( TomahawkServiceSettingsFactory, registerPlugin<TomahawkServiceSettings>(); )
 K_EXPORT_PLUGIN( TomahawkServiceSettingsFactory( "kcm_amarok_tomahawk" ) )
@@ -51,18 +53,18 @@ TomahawkServiceSettings::TomahawkServiceSettings( QWidget *parent, const QVarian
     TomahawkSettings* s = TomahawkSettings::instance();
 
     // Accounts
-    Tomahawk::Accounts::AccountListDelegate* accountDelegate = new Tomahawk::Accounts::AccountListDelegate( this );
+    Tomahawk::Accounts::AccountDelegate* accountDelegate = new Tomahawk::Accounts::AccountDelegate( this );
     m_configDialog->accountsListView->setItemDelegate( accountDelegate );
     m_configDialog->accountsListView->setContextMenuPolicy( Qt::CustomContextMenu );
     m_configDialog->accountsListView->setVerticalScrollMode( QAbstractItemView::ScrollPerPixel );
     m_configDialog->accountsListView->setMouseTracking( true );
 
-    connect( accountDelegate, SIGNAL( openConfig( Tomahawk::Accounts::Account* ) ), this, SLOT( openAccountConfig( Tomahawk::Accounts::Account* ) ) );
-    connect( accountDelegate, SIGNAL( openConfig( Tomahawk::Accounts::AccountFactory* ) ), this, SLOT( openAccountFactoryConfig( Tomahawk::Accounts::AccountFactory* ) ) );
+    connect( accountDelegate, SIGNAL( openConfig( Accounts::Account* ) ), this, SLOT( openAccountConfig( Accounts::Account* ) ) );
+    connect( accountDelegate, SIGNAL( openConfig( Accounts::AccountFactory* ) ), this, SLOT( openAccountFactoryConfig( Accounts::AccountFactory* ) ) );
     connect( accountDelegate, SIGNAL( update( QModelIndex ) ), m_configDialog->accountsListView, SLOT( update( QModelIndex ) ) );
 
-    m_accountModel = new Tomahawk::Accounts::AccountListModel( this );
-    m_accountProxy = new Tomahawk::Accounts::AccountListModelFilterProxy( m_accountModel );
+    m_accountModel = new Accounts::AccountModel( this );
+    m_accountProxy = new Accounts::AccountModelFilterProxy( m_accountModel );
     m_accountProxy->setSourceModel( m_accountModel );
 
     connect( m_accountProxy, SIGNAL( startInstalling( QPersistentModelIndex ) ), accountDelegate, SLOT( startInstalling(QPersistentModelIndex) ) );
@@ -71,7 +73,7 @@ TomahawkServiceSettings::TomahawkServiceSettings( QWidget *parent, const QVarian
 
     m_configDialog->accountsListView->setModel( m_accountProxy );
 
-    connect( m_accountModel, SIGNAL( createAccount( Tomahawk::Accounts::AccountFactory* ) ), this, SLOT( createAccountFromFactory( Tomahawk::Accounts::AccountFactory* ) ) );
+    connect( m_accountModel, SIGNAL( createAccount( Accounts::AccountFactory* ) ), this, SLOT( createAccountFromFactory( Accounts::AccountFactory* ) ) );
 
     load();
 }
@@ -107,12 +109,12 @@ TomahawkServiceSettings::settingsChanged()
 }
 
 void
-TomahawkServiceSettings::openAccountFactoryConfig( Tomahawk::Accounts::AccountFactory* factory )
+TomahawkServiceSettings::openAccountFactoryConfig( Accounts::AccountFactory* factory )
 {
-    QList< Tomahawk::Accounts::Account* > accts;
-    foreach ( Tomahawk::Accounts::Account* acct, Tomahawk::Accounts::AccountManager::instance()->accounts() )
+    QList< Accounts::Account* > accts;
+    foreach ( Accounts::Account* acct, Accounts::AccountManager::instance()->accounts() )
     {
-        if ( Tomahawk::Accounts::AccountManager::instance()->factoryForAccount( acct ) == factory )
+        if ( Accounts::AccountManager::instance()->factoryForAccount( acct ) == factory )
             accts << acct;
         if ( accts.size() > 1 )
             break;
@@ -125,20 +127,20 @@ TomahawkServiceSettings::openAccountFactoryConfig( Tomahawk::Accounts::AccountFa
         return;
     }
 
-    AccountListFactoryWrapper* dialog = new AccountListFactoryWrapper( factory, this );
+    AccountFactoryWrapper* dialog = new AccountFactoryWrapper( factory, this );
     dialog->show();
 }
 
 
 void
-TomahawkServiceSettings::createAccountFromFactory( Tomahawk::Accounts::AccountFactory* factory )
+TomahawkServiceSettings::createAccountFromFactory( Accounts::AccountFactory* factory )
 {
     TomahawkUtils::createAccountFromFactory( factory, this );
 }
 
 
 void
-TomahawkServiceSettings::openAccountConfig( Tomahawk::Accounts::Account* account, bool showDelete )
+TomahawkServiceSettings::openAccountConfig( Accounts::Account* account, bool showDelete )
 {
     TomahawkUtils::openAccountConfig( account, this, showDelete );
 }

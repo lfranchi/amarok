@@ -49,13 +49,6 @@
   
   set(kcm_amarok_tomahawkcollection_PART_SRCS
      TomahawkServiceSettings.cpp
-     AccountListDelegate.cpp
-     AccountListFactoryWrapper.cpp
-     AccountListFactoryWrapperDelegate.cpp
-     AccountListModel.cpp
-     AccountListModelFilterProxy.cpp
-     TomahawkGuiHelpers.cpp
-     DelegateAccountConfigWrapper.cpp
   )
 
   kde4_add_ui_files( kcm_amarok_tomahawkcollection_PART_SRCS
