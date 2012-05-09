@@ -42,6 +42,9 @@
 #include "TomahawkCollection.h"
 #include "TomahawkCollectionLocation.h"
 #include "TomahawkMeta.h"
+#include "playlist/dynamic/GeneratorFactory.h"
+#include "playlist/dynamic/database/DatabaseGenerator.h"
+#include "playlist/dynamic/echonest/EchonestGenerator.h"
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -101,6 +104,11 @@ TomahawkCollectionFactory::init()
     new Pipeline();
     Pipeline::instance()->addExternalResolverFactory( boost::bind( &QtScriptResolver::factory, _1 ) );
     Pipeline::instance()->addExternalResolverFactory( boost::bind( &ScriptResolver::factory, _1 ) );
+
+    tDebug() << "Init Echonest Factory.";
+    GeneratorFactory::registerFactory( "echonest", new EchonestFactory );
+    tDebug() << "Init Database Factory.";
+    GeneratorFactory::registerFactory( "database", new DatabaseFactory );
 
     m_servent = QWeakPointer<Servent>( new Servent( this ) );
     connect( m_servent.data(), SIGNAL( ready() ), SLOT( initSIP() ) );
@@ -310,8 +318,8 @@ TomahawkCollectionFactory::registerMetaTypes()
     qRegisterMetaType< Tomahawk::InfoSystem::InfoType >( "Tomahawk::InfoSystem::InfoType" );
     qRegisterMetaType< Tomahawk::InfoSystem::InfoRequestData >( "Tomahawk::InfoSystem::InfoRequestData" );
     qRegisterMetaType< Tomahawk::InfoSystem::InfoSystemCache* >( "Tomahawk::InfoSystem::InfoSystemCache*" );
+    qRegisterMetaType< Tomahawk::InfoSystem::InfoPluginPtr >( "Tomahawk::InfoSystem::InfoPluginPtr" );
     qRegisterMetaType< QList< Tomahawk::InfoSystem::InfoStringHash > >("QList< Tomahawk::InfoSystem::InfoStringHash > ");
-
     qRegisterMetaTypeStreamOperators< QList< Tomahawk::InfoSystem::InfoStringHash > >("QList< Tomahawk::InfoSystem::InfoStringHash > ");
     qRegisterMetaType< QPersistentModelIndex >( "QPersistentModelIndex" );
 

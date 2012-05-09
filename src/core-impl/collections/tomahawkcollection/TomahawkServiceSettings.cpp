@@ -50,17 +50,15 @@ TomahawkServiceSettings::TomahawkServiceSettings( QWidget *parent, const QVarian
     m_configDialog->setupUi( w );
     l->addWidget( w );
 
-    TomahawkSettings* s = TomahawkSettings::instance();
-
     // Accounts
-    Tomahawk::Accounts::AccountDelegate* accountDelegate = new Tomahawk::Accounts::AccountDelegate( this );
+    Accounts::AccountDelegate* accountDelegate = new Accounts::AccountDelegate( this );
     m_configDialog->accountsListView->setItemDelegate( accountDelegate );
     m_configDialog->accountsListView->setContextMenuPolicy( Qt::CustomContextMenu );
     m_configDialog->accountsListView->setVerticalScrollMode( QAbstractItemView::ScrollPerPixel );
     m_configDialog->accountsListView->setMouseTracking( true );
 
-    connect( accountDelegate, SIGNAL( openConfig( Accounts::Account* ) ), this, SLOT( openAccountConfig( Accounts::Account* ) ) );
-    connect( accountDelegate, SIGNAL( openConfig( Accounts::AccountFactory* ) ), this, SLOT( openAccountFactoryConfig( Accounts::AccountFactory* ) ) );
+    connect( accountDelegate, SIGNAL( openConfig( Tomahawk::Accounts::Account* ) ), this, SLOT( openAccountConfig( Tomahawk::Accounts::Account* ) ) );
+    connect( accountDelegate, SIGNAL( openConfig( Tomahawk::Accounts::AccountFactory* ) ), this, SLOT( openAccountFactoryConfig( Tomahawk::Accounts::AccountFactory* ) ) );
     connect( accountDelegate, SIGNAL( update( QModelIndex ) ), m_configDialog->accountsListView, SLOT( update( QModelIndex ) ) );
 
     m_accountModel = new Accounts::AccountModel( this );
@@ -69,11 +67,10 @@ TomahawkServiceSettings::TomahawkServiceSettings( QWidget *parent, const QVarian
 
     connect( m_accountProxy, SIGNAL( startInstalling( QPersistentModelIndex ) ), accountDelegate, SLOT( startInstalling(QPersistentModelIndex) ) );
     connect( m_accountProxy, SIGNAL( doneInstalling( QPersistentModelIndex ) ), accountDelegate, SLOT( doneInstalling(QPersistentModelIndex) ) );
-    connect( m_accountProxy, SIGNAL( scrollTo( QModelIndex ) ), this, SLOT( scrollTo( QModelIndex ) ) );
 
     m_configDialog->accountsListView->setModel( m_accountProxy );
 
-    connect( m_accountModel, SIGNAL( createAccount( Accounts::AccountFactory* ) ), this, SLOT( createAccountFromFactory( Accounts::AccountFactory* ) ) );
+    connect( m_accountModel, SIGNAL( createAccount( Tomahawk::Accounts::AccountFactory* ) ), this, SLOT( createAccountFromFactory( Tomahawk::Accounts::AccountFactory* ) ) );
 
     load();
 }
