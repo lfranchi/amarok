@@ -1,5 +1,5 @@
 /****************************************************************************************
- * Copyright (c) 2009 Simon Esneault <simon.esneault@gmail.com>                         *
+ * Copyright (c) 2012 Matěj Laitl <matej@laitl.cz>                                      *
  *                                                                                      *
  * This program is free software; you can redistribute it and/or modify it under        *
  * the terms of the GNU General Public License as published by the Free Software        *
@@ -14,40 +14,37 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
  ****************************************************************************************/
 
-#ifndef CUSTOMVIDEOWIDGET_H
-#define CUSTOMVIDEOWIDGET_H
+#ifndef WRITETAGSJOB_H
+#define WRITETAGSJOB_H
+
+#include "MetaValues.h"
 
 #include "amarok_export.h"
-#include <phonon/videowidget.h>
+#include <ThreadWeaver/Job>
+
 
 /**
-* \brief A custom interactive Phonon VideoWidget 
-* Interactivity :
-*  - Double click toggle full screen
-* \sa Phonon::VideoWidget
-*
-* \author Simon Esneault <simon.esneault@gmail.com>
-*/
-
-class CustomVideoWidget : public Phonon::VideoWidget
+ * Calls Meta::Tag::writeTags( path, changedFields ) in a thread so that main thread
+ * is not blocked with IO. writeTags() respects AmarokConfig::writeBackStatistics,
+ * AmarokConfig::writeBack().
+ *
+ * If @param changes contains Meta::valImage, writes back image too, respecting
+ * AmarokConfig::writeBackCover().
+ *
+ * The caller is responsible to delete this job after use, perhaps by connecting its
+ * done() signal to its deleteLater() slot.
+ */
+class AMAROK_EXPORT WriteTagsJob : public ThreadWeaver::Job
 {
     Q_OBJECT
 
-    protected:
-        virtual void mouseDoubleClickEvent(QMouseEvent* );
-
-        virtual void keyPressEvent( QKeyEvent* e );
-        virtual void mousePressEvent( QMouseEvent* e );
-
-    private slots:
-        void enableFullscreen();
-        void disableFullscreen();
+    public:
+        WriteTagsJob( const QString &path, const Meta::FieldHash &changes );
+        virtual void run();
 
     private:
-        void videoMenu( QPoint );
-
-        QWidget *m_parent;
-        QRect    m_rect;
+        const QString m_path;
+        const Meta::FieldHash m_changes;
 };
 
-#endif // CUSTOMVIDEOWIDGET_H
+#endif // WRITETAGSJOB_H

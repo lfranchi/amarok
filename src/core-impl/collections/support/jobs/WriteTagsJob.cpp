@@ -1,5 +1,5 @@
 /****************************************************************************************
- * Copyright (c) 2009 Simon Esneault <simon.esneault@gmail.com>                         *
+ * Copyright (c) 2012 Matěj Laitl <matej@laitl.cz>                                      *
  *                                                                                      *
  * This program is free software; you can redistribute it and/or modify it under        *
  * the terms of the GNU General Public License as published by the Free Software        *
@@ -14,27 +14,25 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.                           *
  ****************************************************************************************/
 
-#ifndef AMAROK_VIDEOCLIP_INFO
-#define AMAROK_VIDEOCLIP_INFO
+#include "WriteTagsJob.h"
 
-#include "context/DataEngine.h"
+#include "amarokconfig.h"
+#include "MetaTagLib.h"
 
-//!  Struct VideoInfo, contain all the info vor a video
-struct VideoInfo {
-    QString url;        // Url for the browser (http://www.youtube.com/watch?v=153d9tc3Oao )
-    QString title;      // Name of the video
-    QString coverurl;   // url of the cover
-    QString duration;   // formatted as a QString(mm:ss)
-    QString desc;       // full description
-    QPixmap cover;      // Image data
-    QString views;      // number of view of the video
-    float rating;       // rating should be beetween 0 to 5
-    QString videolink;  // direct video link to the downloadable file
-    QString source;     // "youtube" or "dailymotion" or "vimeo" or whatever
-    int relevancy;      // used to filter and order the files
-    int length;         // length in seconds
-    QString artist;     // The artist just to show it in the artist name
-    bool isHQ;          // if HQ is available, turn to true;
-};
 
-#endif
+WriteTagsJob::WriteTagsJob(const QString& path, const Meta::FieldHash& changes)
+    : Job()
+    , m_path( path )
+    , m_changes( changes )
+{
+}
+
+void WriteTagsJob::run()
+{
+    Meta::Tag::writeTags( m_path, m_changes );
+
+    if( m_changes.contains( Meta::valImage ) && AmarokConfig::writeBackCover() )
+        Meta::Tag::setEmbeddedCover( m_path, m_changes.value( Meta::valImage ).value<QImage>() );
+}
+
+#include "WriteTagsJob.moc"
