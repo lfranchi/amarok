@@ -5,10 +5,13 @@
 #  TOMAHAWK_INCLUDE_DIRS - the libtomahawk include directory
 #  TOMAHAWK_LIBRARY, the path to libtomahawk
 
+set( TOMAHAWK_SOURCE_DIR /home/domme/dev/sources/tomahawk/)
+set( TOMAHAWK_BINARY_DIR /home/domme/dev/build/tomahawk/ ) #For config.h
+
 set( TOMAHAWK_INCLUDE_DIRS
-    /home/llg/Programacao/tomahawk/build/src #For config.h
-    /home/llg/Programacao/tomahawk/src/libtomahawk/
-    /home/llg/Programacao/tomahawk/src/ # For HeadlessCheck
+    ${TOMAHAWK_BINARY_DIR}/src/
+    ${TOMAHAWK_SOURCE_DIR}/src/libtomahawk/
+    ${TOMAHAWK_SOURCE_DIR}/src/ # For HeadlessCheck
 )
 
 find_library( TOMAHAWK_LIBRARY NAMES tomahawklib
