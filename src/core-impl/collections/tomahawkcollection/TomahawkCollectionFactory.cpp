@@ -226,12 +226,33 @@ TomahawkCollectionFactory::initLocalCollection()
 {
     connect( SourceList::instance(), SIGNAL( ready() ), SLOT( initServent() ) );
 
+    //HACK: load playlists when sources are added
+    onSourcesAdded( SourceList::instance()->sources() );
+    connect( SourceList::instance(), SIGNAL( sourceAdded( source_ptr ) ), SLOT( onSourceAdded( Tomahawk::source_ptr ) ) );
+
     source_ptr src( new Source( 0, tr( "My Collection" ) ) );
     collection_ptr coll( new LocalCollection( src ) );
 
     src->addCollection( coll );
     SourceList::instance()->setLocal( src );
     SourceList::instance()->loadSources();
+}
+
+
+void
+TomahawkCollectionFactory::onSourcesAdded( const QList<source_ptr>& sources )
+{
+    foreach( const source_ptr& source, sources )
+        onSourceAdded( source );
+}
+
+
+void
+TomahawkCollectionFactory::onSourceAdded( const source_ptr& source )
+{
+    source->collection()->playlists();
+    source->collection()->autoPlaylists();
+    source->collection()->stations();
 }
 
 void

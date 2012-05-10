@@ -21,6 +21,9 @@
 
 #include <QMap>
 
+#include "Source.h"
+#include "Typedefs.h"
+
 class Database;
 class Servent;
 class SipHandler;
@@ -65,6 +68,12 @@ class TomahawkCollectionFactory : public Collections::CollectionFactory
          */
         void createCollectionForPeer( const QString &udi );
 
+    private slots:
+        void onSourcesAdded( const QList<Tomahawk::source_ptr>& sources );
+        void onSourceAdded( const Tomahawk::source_ptr& source );
+
+
+    private:
         /// udi to iPod collection map
         QMap<QString, TomahawkCollection *> m_collectionMap;
 
