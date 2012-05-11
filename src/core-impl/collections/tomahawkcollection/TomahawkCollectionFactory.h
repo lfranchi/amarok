@@ -71,7 +71,9 @@ class TomahawkCollectionFactory : public Collections::CollectionFactory
     private slots:
         void onSourcesAdded( const QList<Tomahawk::source_ptr>& sources );
         void onSourceAdded( const Tomahawk::source_ptr& source );
-
+        void onPlaylistsAdded( const QList<Tomahawk::playlist_ptr>& playlists );
+        void onAutoPlaylistsAdded( const QList<Tomahawk::dynplaylist_ptr>& playlists );
+        void onStationsAdded( const QList<Tomahawk::dynplaylist_ptr>& stations );
 
     private:
         /// udi to iPod collection map

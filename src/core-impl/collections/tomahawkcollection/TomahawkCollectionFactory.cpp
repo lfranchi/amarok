@@ -105,6 +105,8 @@ TomahawkCollectionFactory::init()
     Pipeline::instance()->addExternalResolverFactory( boost::bind( &QtScriptResolver::factory, _1 ) );
     Pipeline::instance()->addExternalResolverFactory( boost::bind( &ScriptResolver::factory, _1 ) );
 
+    initDatabase();
+
     tDebug() << "Init Echonest Factory.";
     GeneratorFactory::registerFactory( "echonest", new EchonestFactory );
     tDebug() << "Init Database Factory.";
@@ -113,7 +115,6 @@ TomahawkCollectionFactory::init()
     m_servent = QWeakPointer<Servent>( new Servent( this ) );
     connect( m_servent.data(), SIGNAL( ready() ), SLOT( initSIP() ) );
 
-    initDatabase();
 
     m_accountManager = QWeakPointer< Tomahawk::Accounts::AccountManager >( new Tomahawk::Accounts::AccountManager( this ) );
     connect( m_accountManager.data(), SIGNAL( ready() ), SLOT( accountManagerReady() ) );
@@ -228,8 +229,7 @@ TomahawkCollectionFactory::initLocalCollection()
 
     //HACK: load playlists when sources are added
     onSourcesAdded( SourceList::instance()->sources() );
-    connect( SourceList::instance(), SIGNAL( sourceAdded( source_ptr ) ), SLOT( onSourceAdded( Tomahawk::source_ptr ) ) );
-
+    connect( SourceList::instance(), SIGNAL( sourceAdded( Tomahawk::source_ptr ) ), SLOT( onSourceAdded( Tomahawk::source_ptr ) ) );
     source_ptr src( new Source( 0, tr( "My Collection" ) ) );
     collection_ptr coll( new LocalCollection( src ) );
 
@@ -250,9 +250,41 @@ TomahawkCollectionFactory::onSourcesAdded( const QList<source_ptr>& sources )
 void
 TomahawkCollectionFactory::onSourceAdded( const source_ptr& source )
 {
+//     Q_ASSERT(false);
     source->collection()->playlists();
     source->collection()->autoPlaylists();
     source->collection()->stations();
+
+    connect( source->collection().data(), SIGNAL( playlistsAdded( QList<Tomahawk::playlist_ptr> ) ),
+             SLOT( onPlaylistsAdded( QList<Tomahawk::playlist_ptr> ) ), Qt::QueuedConnection );
+    connect( source->collection().data(), SIGNAL( autoPlaylistsAdded( QList< Tomahawk::dynplaylist_ptr > ) ),
+             SLOT( onAutoPlaylistsAdded( QList<Tomahawk::dynplaylist_ptr> ) ), Qt::QueuedConnection );
+    connect( source->collection().data(), SIGNAL( stationsAdded( QList<Tomahawk::dynplaylist_ptr> ) ),
+             SLOT( onStationsAdded( QList<Tomahawk::dynplaylist_ptr> ) ), Qt::QueuedConnection );
+}
+
+void TomahawkCollectionFactory::onPlaylistsAdded(const QList< playlist_ptr >& playlists)
+{
+    foreach ( const playlist_ptr& p, playlists )
+    {
+        p->loadRevision();
+    }
+}
+
+void TomahawkCollectionFactory::onAutoPlaylistsAdded(const QList< dynplaylist_ptr >& playlists)
+{
+    foreach ( const dynplaylist_ptr& p, playlists )
+    {
+        p->loadRevision();
+    }
+}
+
+void TomahawkCollectionFactory::onStationsAdded(const QList< dynplaylist_ptr >& stations)
+{
+    foreach ( const dynplaylist_ptr& p, stations )
+    {
+        p->loadRevision();
+    }
 }
 
 void
