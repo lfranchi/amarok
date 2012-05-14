@@ -45,6 +45,7 @@
 #include "playlist/dynamic/GeneratorFactory.h"
 #include "playlist/dynamic/database/DatabaseGenerator.h"
 #include "playlist/dynamic/echonest/EchonestGenerator.h"
+#include <ViewManager.h>
 
 #include <QtCore/QDir>
 #include <QtCore/QFile>
@@ -125,6 +126,8 @@ TomahawkCollectionFactory::init()
     initPipeline();
 
     AtticaManager::instance();
+
+    new ViewManager( this );
 
     m_initialized = true;
 }
