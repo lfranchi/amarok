@@ -112,6 +112,8 @@ TomahawkCollectionFactory::init()
     tDebug() << "Init Database Factory.";
     GeneratorFactory::registerFactory( "database", new DatabaseFactory );
 
+    EchonestGenerator::setupCatalogs();
+
     m_servent = QWeakPointer<Servent>( new Servent( this ) );
     connect( m_servent.data(), SIGNAL( ready() ), SLOT( initSIP() ) );
 
